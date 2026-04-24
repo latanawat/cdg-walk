@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#6366f1">
+  <title>STEP UP 🏃</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Firebase v10 compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <!-- Firebase Storage ไม่จำเป็น — รูปเก็บใน Firestore แทน -->
+
+<style>
+/* ===== CSS VARIABLES ===== */
+:root {
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --primary-light: #eef2ff;
+  --gold: #f59e0b;
+  --gold-light: #fffbeb;
+  --green: #10b981;
+  --green-light: #d1fae5;
+  --orange: #f97316;
+  --blue: #3b82f6;
+  --blue-light: #eff6ff;
+  --red: #ef4444;
+  --gray: #f3f4f6;
+  --gray2: #e5e7eb;
+  --gray3: #9ca3af;
+  --text: #111827;
+  --text2: #6b7280;
+  --white: #fff;
+  --radius: 14px;
+  --shadow: 0 2px 16px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.12);
+}
+
+/* ===== RESET ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'Sarabun', 'Segoe UI', sans-serif;
+  background: #e8eaf6;
+  min-height: 100vh;
+  color: var(--text);
+  overflow-x: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+input { font-family: inherit; }
+
+/* ===== APP SHELL ===== */
+.app-shell {
+  max-width: 430px;
+  margin: 0 auto;
+  background: var(--white);
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ===== VIEW SYSTEM ===== */
+.view { display: none; flex: 1; overflow-y: auto; padding-bottom: 80px; }
+.view.active { display: block; }
+
+/* ===== APP HEADER ===== */
+.app-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--gray2);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.app-header h1 { font-size: 16px; font-weight: 700; }
+.back-btn {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 14px; font-weight: 600; color: var(--primary);
+  background: none; border: none; padding: 0;
+}
+.back-btn svg { width: 18px; height: 18px; }
+.btn-icon {
+  background: none; border: none; padding: 6px;
+  border-radius: 8px; color: var(--text2);
+  display: flex; align-items: center;
+}
+.btn-icon:hover { background: var(--gray); }
+.btn-icon svg { width: 20px; height: 20px; }
+
+/* ===== LOGIN VIEW ===== */
+#view-login {
+  background: linear-gradient(145deg, #6366f1 0%, #4f46e5 50%, #312e81 100%);
+  min-height: 100vh; padding: 48px 24px 32px;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+#view-login.active { display: flex; }
+.login-hero { text-align: center; margin-bottom: 40px; }
+.login-icon {
+  width: 80px; height: 80px; background: rgba(255,255,255,0.18);
+  border-radius: 24px; margin: 0 auto 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px;
+}
+.login-hero h1 { color: #fff; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+.login-hero p { color: rgba(255,255,255,0.75); font-size: 15px; margin-top: 6px; }
+.login-card {
+  background: #fff; border-radius: 24px; padding: 28px 24px;
+  width: 100%; box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+}
+.login-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.login-card p { font-size: 13px; color: var(--gray3); margin-bottom: 22px; }
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: var(--text2); margin-bottom: 6px;
+}
+.form-input {
+  width: 100%; padding: 14px 16px; border-radius: 12px;
+  border: 1.5px solid var(--gray2); font-size: 15px;
+  outline: none; transition: border-color 0.2s;
+  background: var(--gray);
+}
+.form-input:focus { border-color: var(--primary); background: #fff; }
+.login-error {
+  background: #fee2e2; color: #b91c1c; border-radius: 8px;
+  padding: 10px 12px; font-size: 13px; margin-bottom: 14px;
+  display: none; border: 1px solid #fca5a5;
+}
+.btn-primary {
+  width: 100%; padding: 15px; border-radius: 14px; border: none;
+  background: var(--primary); color: #fff; font-size: 16px; font-weight: 700;
+  transition: all 0.15s; box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+}
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+.login-footer { margin-top: 16px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.6); }
+
+/* ===== HOME VIEW ===== */
+.home-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  padding: 24px 20px 28px; color: #fff;
+}
+.home-hero .greeting { font-size: 14px; opacity: 0.85; margin-bottom: 4px; }
+.home-hero .name { font-size: 24px; font-weight: 800; }
+.home-hero .tagline { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+.stats-row {
+  display: flex; gap: 10px; margin-top: 20px;
+}
+.stat-pill {
+  flex: 1; background: rgba(255,255,255,0.18);
+  border-radius: 12px; padding: 10px 8px; text-align: center;
+}
+.stat-pill .val { font-size: 22px; font-weight: 800; line-height: 1; }
+.stat-pill .lbl { font-size: 11px; opacity: 0.8; margin-top: 3px; }
+
+.section-label {
+  padding: 16px 16px 8px; font-size: 12px; font-weight: 700;
+  color: var(--gray3); text-transform: uppercase; letter-spacing: 0.5px;
+}
+.divider { height: 8px; background: var(--gray); }
+
+/* Start Walk Button */
+.start-walk-area { padding: 16px; }
+.btn-start-walk {
+  width: 100%; padding: 20px; border-radius: 20px; border: none;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff; font-size: 18px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  box-shadow: 0 6px 24px rgba(99,102,241,0.45);
+  transition: all 0.2s;
+}
+.btn-start-walk:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,0.5); }
+.btn-start-walk .walk-icon { font-size: 28px; }
+
+/* Peak time banner */
+.peak-banner {
+  margin: 0 16px 0; padding: 12px 16px; border-radius: 12px;
+  background: #fff7ed; border: 1.5px solid var(--orange);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600; color: #9a3412;
+}
+.peak-banner .peak-dot {
+  width: 10px; height: 10px; background: var(--orange);
+  border-radius: 50%; flex-shrink: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* Leaderboard preview */
+.lb-preview-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--gray2);
+}
+.lb-preview-item:last-child { border-bottom: none; }
+.lb-rank { width: 28px; text-align: center; font-size: 18px; }
+.lb-name { flex: 1; font-size: 14px; font-weight: 600; }
+.lb-score { font-size: 14px; font-weight: 700; color: var(--primary); }
+.lb-floors { font-size: 11px; color: var(--gray3); }
+
+/* Recent walks */
+.walk-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--gray2);
+}
+.walk-item:last-child { border-bottom: none; }
+.walk-dir-badge {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.walk-dir-badge.up { background: var(--blue-light); }
+.walk-dir-badge.down { background: #fff7ed; }
+.walk-info { flex: 1; }
+.walk-route { font-size: 14px; font-weight: 600; }
+.walk-meta { font-size: 11px; color: var(--gray3); margin-top: 2px; }
+.walk-pts { font-size: 14px; font-weight: 700; color: var(--gold); }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 4px; }
+.badge-peak { background: #fff7ed; color: var(--orange); }
+.badge-photo { background: var(--green-light); color: var(--green); }
+
+/* Logout btn */
+.btn-logout {
+  background: none; border: none; padding: 6px 10px;
+  border-radius: 8px; color: var(--gray3);
+  font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 4px;
+}
+.btn-logout:hover { background: var(--gray); color: var(--red); }
+
+/* ===== WALK VIEW ===== */
+#view-walk { padding-bottom: 0; }
+
+/* Step containers */
+.walk-step { display: none; padding-bottom: 100px; }
+.walk-step.active { display: block; }
+
+/* Floor picker */
+.floor-picker-label {
+  text-align: center; padding: 24px 16px 16px;
+  font-size: 22px; font-weight: 800; color: var(--text);
+}
+.floor-picker-sub { text-align: center; font-size: 14px; color: var(--gray3); margin-top: -10px; margin-bottom: 16px; }
+.floor-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 0 16px;
+}
+.floor-btn {
+  padding: 18px 10px; border-radius: 14px; border: 2px solid var(--gray2);
+  background: var(--gray); font-size: 18px; font-weight: 700;
+  color: var(--text); transition: all 0.15s; text-align: center;
+}
+.floor-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+.floor-btn.selected {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(99,102,241,0.35); transform: scale(1.05);
+}
+.floor-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+.walk-step-footer {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px; padding: 16px;
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--gray2); z-index: 150;
+}
+.btn-cta {
+  width: 100%; padding: 17px; border-radius: 16px; border: none;
+  background: var(--primary); color: #fff; font-size: 17px; font-weight: 700;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.4); transition: all 0.15s;
+}
+.btn-cta:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-cta:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.btn-cta.green { background: var(--green); box-shadow: 0 4px 16px rgba(16,185,129,0.4); }
+.btn-cta.green:hover { background: #059669; }
+
+/* Active walk step */
+.walk-active-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  padding: 32px 20px 24px; color: #fff; text-align: center;
+}
+.timer-display {
+  font-size: 56px; font-weight: 800; letter-spacing: 2px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.timer-label { font-size: 14px; opacity: 0.75; margin-top: 8px; }
+.walk-from-badge {
+  display: inline-block; margin-top: 16px;
+  background: rgba(255,255,255,0.2); border-radius: 20px;
+  padding: 6px 18px; font-size: 14px; font-weight: 600;
+}
+
+.walk-active-body { padding: 16px; }
+
+/* Peak alert in walk */
+.peak-alert {
+  background: linear-gradient(135deg, var(--orange) 0%, #dc2626 100%);
+  border-radius: 16px; padding: 16px; color: #fff; margin-bottom: 16px;
+  display: none;
+}
+.peak-alert.show { display: block; animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.peak-alert h3 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+.peak-alert p { font-size: 12px; opacity: 0.9; margin-bottom: 12px; }
+.btn-cam {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  width: 100%; padding: 12px; border-radius: 12px; border: none;
+  background: rgba(255,255,255,0.25); color: #fff;
+  font-size: 15px; font-weight: 700; transition: background 0.15s;
+}
+.btn-cam:hover { background: rgba(255,255,255,0.35); }
+.btn-cam svg { width: 20px; height: 20px; }
+
+/* Camera button (not peak) */
+.btn-cam-small {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border-radius: 10px; border: 1.5px solid var(--gray2);
+  background: var(--gray); font-size: 13px; font-weight: 600; color: var(--text2);
+  transition: all 0.15s;
+}
+.btn-cam-small:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.btn-cam-small svg { width: 16px; height: 16px; }
+
+/* Photo proof area */
+.proof-area { margin-bottom: 16px; }
+.proof-label { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+.proof-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.proof-thumb-wrap { position: relative; width: 72px; height: 72px; }
+.proof-thumb {
+  width: 72px; height: 72px; border-radius: 10px;
+  object-fit: cover; border: 2px solid var(--gray2);
+}
+.proof-remove {
+  position: absolute; top: -6px; right: -6px;
+  width: 20px; height: 20px; background: var(--red); color: #fff;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; border: none; z-index: 10;
+}
+
+/* End floor direction preview */
+.direction-preview {
+  text-align: center; padding: 16px;
+  font-size: 15px; font-weight: 700; color: var(--text2);
+  display: none;
+}
+.direction-preview.show { display: block; }
+.direction-preview .dir-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 20px; border-radius: 20px;
+  font-size: 16px; font-weight: 800;
+}
+.direction-preview .dir-tag.up { background: var(--blue-light); color: var(--blue); }
+.direction-preview .dir-tag.down { background: #fff7ed; color: var(--orange); }
+
+/* Result step */
+.walk-result-header {
+  text-align: center;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  padding: 32px 20px 28px; color: #fff;
+}
+.result-emoji { font-size: 56px; margin-bottom: 8px; }
+.result-score {
+  font-size: 64px; font-weight: 800; line-height: 1;
+  animation: scoreIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes scoreIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.result-score-label { font-size: 15px; opacity: 0.85; margin-top: 8px; }
+.result-summary { font-size: 14px; opacity: 0.8; margin-top: 6px; }
+
+.score-breakdown { padding: 20px 16px; }
+.score-breakdown h3 { font-size: 14px; font-weight: 700; color: var(--gray3); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.score-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--gray2);
+}
+.score-row:last-child { border-bottom: none; }
+.score-row .lbl { font-size: 14px; color: var(--text2); }
+.score-row .pts { font-size: 15px; font-weight: 700; }
+.score-row .pts.base { color: var(--primary); }
+.score-row .pts.speed { color: var(--blue); }
+.score-row .pts.peak { color: var(--orange); }
+.score-row .pts.total { color: var(--green); font-size: 18px; }
+
+/* ===== LEADERBOARD VIEW ===== */
+.lb-tabs {
+  display: flex; border-bottom: 2px solid var(--gray2);
+  padding: 0 16px; gap: 4px; background: #fff;
+  position: sticky; top: 0; z-index: 50;
+}
+.lb-tab {
+  padding: 12px 16px; font-size: 14px; font-weight: 600;
+  border: none; background: none; color: var(--gray3);
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all 0.15s; cursor: pointer;
+}
+.lb-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.lb-podium { padding: 20px 16px 8px; display: flex; align-items: flex-end; justify-content: center; gap: 8px; }
+.podium-card {
+  flex: 1; border-radius: 16px; padding: 16px 8px 12px;
+  text-align: center; max-width: 130px; color: #fff;
+}
+.podium-card.first { background: linear-gradient(135deg, #f59e0b, #d97706); padding-top: 24px; }
+.podium-card.second { background: linear-gradient(135deg, #94a3b8, #64748b); }
+.podium-card.third { background: linear-gradient(135deg, #cd7c3e, #9a5a2d); }
+.podium-medal { font-size: 28px; margin-bottom: 6px; }
+.podium-name { font-size: 13px; font-weight: 700; }
+.podium-score { font-size: 18px; font-weight: 800; margin-top: 4px; }
+.podium-floors { font-size: 11px; opacity: 0.85; }
+
+.lb-list { padding: 0 0 16px; }
+.lb-list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--gray2);
+  transition: background 0.1s;
+}
+.lb-list-item.me { background: var(--primary-light); }
+.lb-list-item:last-child { border-bottom: none; }
+.lb-list-rank { width: 28px; font-size: 14px; font-weight: 700; color: var(--gray3); text-align: center; }
+.lb-list-name { flex: 1; font-size: 14px; font-weight: 600; }
+.lb-list-sub { font-size: 11px; color: var(--gray3); }
+.lb-list-score { font-size: 15px; font-weight: 800; color: var(--primary); }
+.lb-me-tag {
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 4px;
+}
+
+.lb-empty { padding: 48px 20px; text-align: center; color: var(--gray3); font-size: 14px; }
+.lb-loading { padding: 48px; text-align: center; color: var(--gray3); }
+
+/* ===== INSIGHTS VIEW ===== */
+.insights-header {
+  background: linear-gradient(135deg, #312e81 0%, #6366f1 100%);
+  padding: 24px 20px; color: #fff;
+}
+.insights-header h1 { font-size: 22px; font-weight: 800; }
+.insights-header p { font-size: 13px; opacity: 0.75; margin-top: 4px; }
+
+.insight-cards { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.insight-card {
+  border-radius: 16px; padding: 16px;
+  background: var(--white); border: 1px solid var(--gray2);
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: var(--shadow);
+}
+.insight-icon { font-size: 36px; flex-shrink: 0; }
+.insight-body { flex: 1; }
+.insight-title { font-size: 12px; font-weight: 700; color: var(--gray3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.insight-name { font-size: 16px; font-weight: 800; color: var(--text); }
+.insight-value { font-size: 14px; color: var(--text2); margin-top: 2px; }
+.insight-highlight { font-size: 22px; font-weight: 800; color: var(--primary); }
+
+.insights-loading { padding: 48px; text-align: center; color: var(--gray3); }
+
+/* ===== HISTORY VIEW ===== */
+.history-empty { padding: 48px 20px; text-align: center; color: var(--gray3); font-size: 14px; }
+.history-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-bottom: 1px solid var(--gray2);
+}
+.history-item:last-child { border-bottom: none; }
+.history-dir {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.history-dir.up { background: var(--blue-light); }
+.history-dir.down { background: #fff7ed; }
+.history-info { flex: 1; }
+.history-route { font-size: 15px; font-weight: 700; }
+.history-meta { font-size: 12px; color: var(--gray3); margin-top: 3px; }
+.history-right { text-align: right; }
+.history-pts { font-size: 16px; font-weight: 800; color: var(--gold); }
+.history-time { font-size: 11px; color: var(--gray3); margin-top: 3px; }
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px; z-index: 200;
+  background: rgba(255,255,255,0.97); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--gray2);
+  display: flex;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 10px 4px;
+  border: none; background: none; color: var(--gray3);
+  font-size: 10px; font-weight: 600; transition: color 0.15s;
+}
+.nav-item.active { color: var(--primary); }
+.nav-item svg { width: 22px; height: 22px; margin-bottom: 3px; }
+
+/* ===== FIREBASE SETUP OVERLAY ===== */
+#setup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 9999; display: none; align-items: flex-end; justify-content: center;
+  padding: 20px;
+}
+#setup-overlay.show { display: flex; }
+.setup-card {
+  background: #fff; border-radius: 24px; padding: 28px 24px;
+  width: 100%; max-width: 430px; max-height: 80vh; overflow-y: auto;
+}
+.setup-card h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+.setup-card p { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+.setup-step {
+  background: var(--gray); border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; font-size: 13px; font-weight: 600;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.setup-step .step-num {
+  background: var(--primary); color: #fff;
+  width: 22px; height: 22px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 12px;
+  font-weight: 700; flex-shrink: 0;
+}
+.setup-card pre {
+  background: #1e1e2e; color: #cdd6f4; border-radius: 10px;
+  padding: 14px; font-size: 12px; overflow-x: auto;
+  margin: 12px 0; font-family: monospace; white-space: pre-wrap;
+}
+.btn-setup-close {
+  width: 100%; padding: 14px; border-radius: 12px; border: none;
+  background: var(--primary); color: #fff; font-size: 15px; font-weight: 700;
+  margin-top: 12px;
+}
+
+/* ===== CAMERA OVERLAYS ===== */
+.cam-overlay {
+  position: fixed; inset: 0; background: #000; z-index: 900;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+}
+.cam-overlay.open { display: flex; }
+#cam-video { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+.cam-top-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px; z-index: 10;
+}
+.cam-btn-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); border: none; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.cam-btn-icon svg { width: 22px; height: 22px; }
+.cam-bottom-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: center; align-items: center;
+  padding: 40px 24px; gap: 48px; z-index: 10;
+}
+.cam-shutter {
+  width: 76px; height: 76px; border-radius: 50%;
+  background: #fff; border: 5px solid rgba(255,255,255,0.4);
+  cursor: pointer; transition: transform 0.1s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.cam-shutter:active { transform: scale(0.92); }
+.cam-preview-overlay {
+  position: fixed; inset: 0; background: #000; z-index: 910;
+  display: none; flex-direction: column;
+}
+.cam-preview-overlay.open { display: flex; }
+#cam-preview-img { width: 100%; flex: 1; object-fit: contain; }
+.cam-preview-bar {
+  display: flex; justify-content: space-around; padding: 24px;
+  background: rgba(0,0,0,0.8); gap: 16px;
+}
+.cam-preview-btn {
+  flex: 1; padding: 14px; border-radius: 12px; border: none;
+  font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.cam-preview-btn.retake { background: rgba(255,255,255,0.15); color: #fff; }
+.cam-preview-btn.use { background: var(--primary); color: #fff; }
+.action-sheet-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 800; display: none; align-items: flex-end;
+}
+.action-sheet-bg.open { display: flex; }
+.action-sheet {
+  background: #fff; border-radius: 20px 20px 0 0;
+  padding: 12px 16px 32px; width: 100%; max-width: 430px; margin: 0 auto;
+}
+.action-sheet-handle { width: 40px; height: 4px; background: var(--gray2); border-radius: 2px; margin: 0 auto 16px; }
+.action-sheet-title { font-size: 13px; color: var(--gray3); text-align: center; margin-bottom: 12px; }
+.action-sheet-btn {
+  width: 100%; padding: 15px; border-radius: 12px; border: 1.5px solid var(--gray2);
+  background: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+  font-family: inherit; color: var(--text);
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.action-sheet-btn:hover { background: var(--gray); }
+.action-sheet-btn svg { width: 22px; height: 22px; }
+.action-sheet-btn.cancel { color: var(--red); }
+input[type=file] { display: none; }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed; bottom: 90px; left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a; color: #fff;
+  padding: 10px 20px; border-radius: 25px;
+  font-size: 13px; font-weight: 500;
+  z-index: 1000; opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ===== MISC ===== */
+.empty-state { padding: 48px 20px; text-align: center; color: var(--gray3); }
+.empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+.loading-spinner { padding: 48px; text-align: center; color: var(--gray3); font-size: 14px; }
+</style>
+</head>
+
+<body>
+<div class="app-shell">
+
+  <!-- ====== VIEW: LOGIN ====== -->
+  <div id="view-login" class="view active">
+    <div class="login-hero">
+      <div class="login-icon">🏃</div>
+      <h1>STEP UP</h1>
+      <p>เดินบันได เก็บแต้ม สนุกกับเพื่อน</p>
+    </div>
+    <div class="login-card">
+      <h2>เข้าสู่ระบบ</h2>
+      <p>ใส่รหัสพนักงาน — ระบบจะสร้างบัญชีให้อัตโนมัติถ้ายังไม่มี</p>
+      <div id="login-error" class="login-error"></div>
+      <div class="form-group">
+        <label class="form-label">รหัสพนักงาน</label>
+        <input class="form-input" id="inp-empid" type="text" inputmode="numeric"
+          placeholder="เช่น 12345" maxlength="10"
+          onkeydown="if(event.key==='Enter') document.getElementById('inp-name').focus()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ชื่อที่ต้องการแสดง</label>
+        <input class="form-input" id="inp-name" type="text"
+          placeholder="เช่น น้องฟ้า"
+          onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <button class="btn-primary" id="btn-login" onclick="doLogin()">เข้าสู่ระบบ / สมัครสมาชิก</button>
+    </div>
+    <p class="login-footer">🔒 ข้อมูลถูกเก็บใน Firebase อย่างปลอดภัย</p>
+  </div>
+
+  <!-- ====== VIEW: HOME ====== -->
+  <div id="view-home" class="view">
+    <div class="home-hero">
+      <div class="greeting">สวัสดี 👋</div>
+      <div class="name" id="home-name">—</div>
+      <div class="tagline" id="home-tagline">วันนี้เดินไปกี่ชั้นแล้ว?</div>
+      <div class="stats-row">
+        <div class="stat-pill"><div class="val" id="stat-floors">0</div><div class="lbl">ชั้นวันนี้</div></div>
+        <div class="stat-pill"><div class="val" id="stat-walks">0</div><div class="lbl">ครั้งวันนี้</div></div>
+        <div class="stat-pill"><div class="val" id="stat-pts">0</div><div class="lbl">แต้มวันนี้</div></div>
+      </div>
+    </div>
+
+    <!-- Peak time banner -->
+    <div id="home-peak-banner" class="peak-banner" style="display:none; margin:12px 16px 0;">
+      <div class="peak-dot"></div>
+      <div><strong>ตอนนี้เป็น Peak Time ลิฟต์!</strong><br><span style="font-weight:400;font-size:12px">เดินบันไดตอนนี้รับ Bonus แต้มพิเศษ 🔥</span></div>
+    </div>
+
+    <div class="start-walk-area">
+      <button class="btn-start-walk" onclick="showView('walk'); initWalkSetup()">
+        <span class="walk-icon">🏃</span>
+        <span>เริ่มเดิน</span>
+      </button>
+    </div>
+
+    <!-- Leaderboard preview -->
+    <div class="divider"></div>
+    <div class="section-label">🏆 อันดับสัปดาห์นี้</div>
+    <div id="home-lb-preview">
+      <div class="loading-spinner">กำลังโหลด...</div>
+    </div>
+
+    <!-- Recent walks -->
+    <div class="divider"></div>
+    <div class="section-label">📋 การเดินล่าสุดของคุณ</div>
+    <div id="home-recent">
+      <div class="empty-state">
+        <div class="emoji">👟</div>
+        <p>ยังไม่มีประวัติการเดิน<br>เริ่มเดินบันไดครั้งแรกเลย!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== VIEW: WALK ====== -->
+  <div id="view-walk" class="view">
+    <!-- Header (back button) -->
+    <div class="app-header">
+      <button class="back-btn" onclick="confirmCancelWalk()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        ยกเลิก
+      </button>
+      <h1 id="walk-header-title">เลือกชั้นเริ่ม</h1>
+      <div style="width:60px"></div>
+    </div>
+
+    <!-- Step 0: Select Start Floor -->
+    <div id="walk-step-0" class="walk-step active">
+      <div class="floor-picker-label">🏁 เริ่มจากชั้นไหน?</div>
+      <p class="floor-picker-sub">แตะเพื่อเลือกชั้นที่คุณอยู่ตอนนี้</p>
+      <div class="floor-grid" id="start-floor-grid"></div>
+      <div class="walk-step-footer">
+        <button class="btn-cta" id="btn-confirm-start" disabled onclick="confirmStartFloor()">
+          เริ่มจับเวลา ▶
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 1: Walk Active (Timer) -->
+    <div id="walk-step-1" class="walk-step">
+      <div class="walk-active-header">
+        <div class="timer-display" id="timer-display">00:00</div>
+        <div class="timer-label">เวลาที่เดิน</div>
+        <div class="walk-from-badge">📍 เริ่มจาก: ชั้น <span id="active-start-floor">—</span></div>
+      </div>
+
+      <div class="walk-active-body">
+        <!-- Peak time alert -->
+        <div class="peak-alert" id="walk-peak-alert">
+          <h3>🔥 ตอนนี้ Peak Time ลิฟต์!</h3>
+          <p>ถ่ายรูปคิวลิฟต์เป็นหลักฐาน รับ Bonus +100 แต้ม</p>
+          <button class="btn-cam" onclick="openPhotoInput()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            ถ่ายรูปหลักฐาน
+          </button>
+        </div>
+
+        <!-- Non-peak camera option -->
+        <div id="walk-cam-regular" style="margin-bottom:12px; display:none;">
+          <div class="proof-label" style="margin-bottom:8px;">📸 ถ่ายรูปหลักฐาน (ช่วงลิฟต์มีคิวคนใช้งานเยอะ +30 แต้ม)</div>
+          <button class="btn-cam-small" onclick="openPhotoInput()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            เพิ่มรูปหลักฐาน
+          </button>
+        </div>
+
+        <!-- Photo proof area -->
+        <div class="proof-area" id="proof-area" style="display:none">
+          <div class="proof-label">📸 หลักฐานของคุณ</div>
+          <div class="proof-grid" id="proof-grid"></div>
+        </div>
+
+        <div class="walk-step-footer">
+          <button class="btn-cta green" onclick="goToEndFloor()">
+            🏁 ถึงแล้ว! เลือกชั้นปลาย
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Select End Floor -->
+    <div id="walk-step-2" class="walk-step">
+      <div class="floor-picker-label">🏁 เดินถึงชั้นไหน?</div>
+      <p class="floor-picker-sub">เลือกชั้นที่คุณมาถึง</p>
+      <div class="direction-preview" id="direction-preview">
+        <div class="dir-tag" id="direction-tag">—</div>
+        <div style="font-size:13px;color:var(--gray3);margin-top:6px;" id="floors-count-preview"></div>
+      </div>
+      <div class="floor-grid" id="end-floor-grid"></div>
+      <div class="walk-step-footer">
+        <button class="btn-cta green" id="btn-save-walk" disabled onclick="saveWalk()">
+          ✓ บันทึกการเดิน
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Result -->
+    <div id="walk-step-3" class="walk-step">
+      <div class="walk-result-header">
+        <div class="result-emoji">🎉</div>
+        <div class="result-score" id="result-score">0</div>
+        <div class="result-score-label">แต้มการเดินครั้งนี้</div>
+        <div class="result-summary" id="result-summary"></div>
+      </div>
+
+      <div class="score-breakdown">
+        <h3>รายละเอียดคะแนน</h3>
+        <div class="score-row"><span class="lbl" id="rb-floor-lbl">ชั้น × 10</span><span class="pts base" id="rb-floor-pts">0</span></div>
+        <div class="score-row"><span class="lbl" id="rb-speed-lbl">Speed Bonus</span><span class="pts speed" id="rb-speed-pts">+0</span></div>
+        <div class="score-row" id="rb-peak-row" style="display:none">
+          <span class="lbl" id="rb-peak-lbl">🔥 Peak Bonus</span>
+          <span class="pts peak" id="rb-peak-pts">+0</span>
+        </div>
+        <div class="score-row"><span class="lbl"><strong>รวม</strong></span><span class="pts total" id="rb-total">0</span></div>
+      </div>
+
+      <div style="padding:0 16px 16px;">
+        <div style="background:var(--primary-light); border-radius:12px; padding:14px; margin-bottom:12px; font-size:13px; color:var(--text2);">
+          💡 คะแนน Leaderboard คำนวณจาก 3 ปัจจัย: ค่าเฉลี่ยชั้น/ครั้ง, ความเร็ว และ Peak Time Bonus
+        </div>
+        <button class="btn-cta" onclick="finishWalk()">กลับหน้าแรก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== VIEW: LEADERBOARD ====== -->
+  <div id="view-leaderboard" class="view">
+    <div class="app-header" style="border-bottom:none;">
+      <h1>🏆 อันดับ</h1>
+      <button class="btn-icon" onclick="loadLeaderboard()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+          <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/>
+        </svg>
+      </button>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" id="tab-week" onclick="switchLbTab('week')">สัปดาห์นี้</button>
+      <button class="lb-tab" id="tab-today" onclick="switchLbTab('today')">วันนี้</button>
+      <button class="lb-tab" id="tab-all" onclick="switchLbTab('all')">ทั้งหมด</button>
+    </div>
+    <div id="lb-content">
+      <div class="lb-loading">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- ====== VIEW: INSIGHTS ====== -->
+  <div id="view-insights" class="view">
+    <div class="insights-header">
+      <h1>💡 Insights แปลกๆ</h1>
+      <p>สถิติที่น่าสนใจจากนักเดินทุกคน</p>
+    </div>
+    <div id="insights-content">
+      <div class="insights-loading">กำลังวิเคราะห์ข้อมูล...</div>
+    </div>
+  </div>
+
+  <!-- ====== VIEW: HISTORY ====== -->
+  <div id="view-history" class="view">
+    <div class="app-header">
+      <h1>📋 ประวัติของฉัน</h1>
+      <button class="btn-icon" onclick="loadHistory()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+          <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/>
+        </svg>
+      </button>
+    </div>
+    <div id="history-content">
+      <div class="empty-state"><div class="emoji">📋</div><p>ยังไม่มีประวัติ</p></div>
+    </div>
+  </div>
+
+</div><!-- end .app-shell -->
+
+<!-- ====== BOTTOM NAV ====== -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none;">
+  <button class="nav-item active" id="nav-home" onclick="switchNav('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    หน้าแรก
+  </button>
+  <button class="nav-item" id="nav-leaderboard" onclick="switchNav('leaderboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="18 20 18 10"/><polyline points="12 20 12 4"/><polyline points="6 20 6 14"/>
+    </svg>
+    อันดับ
+  </button>
+  <button class="nav-item" id="nav-insights" onclick="switchNav('insights')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    Insights
+  </button>
+  <button class="nav-item" id="nav-history" onclick="switchNav('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    ประวัติ
+  </button>
+</nav>
+
+<!-- ====== CAMERA OVERLAYS ====== -->
+<div class="cam-overlay" id="cam-overlay">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <div class="cam-top-bar">
+    <button class="cam-btn-icon" onclick="closeCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <button class="cam-btn-icon" onclick="flipCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/>
+      </svg>
+    </button>
+  </div>
+  <div class="cam-bottom-bar">
+    <div style="width:44px"></div>
+    <button class="cam-shutter" onclick="capturePhoto()"></button>
+    <div style="width:44px"></div>
+  </div>
+</div>
+<div class="cam-preview-overlay" id="cam-preview-overlay">
+  <img id="cam-preview-img" src="" alt="preview">
+  <div class="cam-preview-bar">
+    <button class="cam-preview-btn retake" onclick="retakePhoto()">🔄 ถ่ายใหม่</button>
+    <button class="cam-preview-btn use" onclick="usePhoto()">✓ ใช้รูปนี้</button>
+  </div>
+</div>
+<div class="action-sheet-bg" id="action-sheet-bg" onclick="closeActionSheet(event)">
+  <div class="action-sheet">
+    <div class="action-sheet-handle"></div>
+    <div class="action-sheet-title">เพิ่มหลักฐานการเดิน</div>
+    <button class="action-sheet-btn" onclick="openInAppCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      ถ่ายภาพ (ไม่ reload)
+    </button>
+    <button class="action-sheet-btn" onclick="openGalleryPicker()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      เลือกจากแกลเลอรี่
+    </button>
+    <button class="action-sheet-btn cancel" onclick="closeActionSheet()">ยกเลิก</button>
+  </div>
+</div>
+<input type="file" id="file-input" accept="image/*" style="display:none">
+
+<!-- ====== FIREBASE SETUP OVERLAY ====== -->
+<div id="setup-overlay">
+  <div class="setup-card">
+    <h2>⚙️ ตั้งค่า Firebase</h2>
+    <p>แอปนี้ใช้ Firebase เป็น backend กรุณาตั้งค่าก่อนใช้งาน</p>
+    <div class="setup-step">
+      <div class="step-num">1</div>
+      <div>ไปที่ <strong>console.firebase.google.com</strong> → สร้าง Project ใหม่</div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">2</div>
+      <div>เปิด <strong>Firestore Database</strong> → Start in Test Mode</div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">3</div>
+      <div>เปิด <strong>Storage</strong> → Start in Test Mode</div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">4</div>
+      <div>Project Settings → Web App → Copy <strong>firebaseConfig</strong></div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">5</div>
+      <div>เปิดไฟล์ index.html แล้ว แทนที่ส่วน <strong>FIREBASE CONFIG HERE</strong> ด้วย config ของคุณ</div>
+    </div>
+    <pre>// ตัวอย่าง config:
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "myapp.firebaseapp.com",
+  projectId: "myapp",
+  storageBucket: "myapp.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456:web:abc..."
+};</pre>
+    <button class="btn-setup-close" onclick="document.getElementById('setup-overlay').classList.remove('show')">
+      เข้าใจแล้ว (ทดสอบ Offline Mode)
+    </button>
+  </div>
+</div>
+
+<!-- ====== TOAST ====== -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// =====================================================
+// ██████╗  ██████╗ ███╗   ██╗███████╗██╗ ██████╗
+// ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝
+// ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
+// ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
+// ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
+//  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
+// =====================================================
+
+// ===== FIREBASE CONFIG =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDhuX51IzxaXq6KhALarmM63LXekZl29iY",
+  authDomain: "cdg-operation-2026.firebaseapp.com",
+  projectId: "cdg-operation-2026",
+  storageBucket: "cdg-operation-2026.firebasestorage.app",
+  messagingSenderId: "504738951756",
+  appId: "1:504738951756:web:b72bb6271b7e3d4e7b3ae9",
+  measurementId: "G-3ZGTE044PW"
+};
+// ===== END FIREBASE CONFIG =====
+
+// ===== CONSTANTS =====
+// ชั้นของ Central (ไม่มีชั้น 4 และ 13 — เป็นสากลของห้างไทย)
+const FLOORS = ['B','G','1','2','3','5','6','7','8','9','10','11','12','12A','14','15','16'];
+// FLOOR_NUMS = จำนวนชั้นจริงที่ต้องเดิน (นับจาก G=0 ขึ้นไป)
+const FLOOR_NUMS = {
+  'B':-1, 'G':0,
+  '1':1, '2':2, '3':3,
+  '5':4, '6':5, '7':6, '8':7,
+  '9':8, '10':9, '11':10, '12':11,
+  '12A':12, '14':13, '15':14, '16':15
+};
+const FLOOR_DISPLAY = {
+  'B':'B', 'G':'G',
+  '1':'1', '2':'2', '3':'3',
+  '5':'5', '6':'6', '7':'7', '8':'8',
+  '9':'9', '10':'10', '11':'11', '12':'12',
+  '12A':'12A', '14':'14', '15':'15', '16':'16'
+};
+const PEAK_HOURS = [
+  { start: 8*60+30, end: 9*60+30 },
+  { start: 12*60,   end: 13*60+30 },
+  { start: 17*60+30, end: 19*60 }
+];
+const SESSION_KEY = 'stepup_session';
+const DEMO_MODE = firebaseConfig.apiKey === 'YOUR_API_KEY';
+
+// ===== APP STATE =====
+let db = null;
+let currentUser = null;
+let currentView = 'home';
+let walkStep = 0;
+let activeWalk = { startFloor: null, endFloor: null, startTime: null, photo: null, isPeakTime: false };
+let timerInterval = null;
+let _camStream = null, _camFacing = 'environment', _capturedB64 = null;
+let lbCurrentTab = 'week';
+
+// ===== FIREBASE INIT =====
+let firebaseOk = false;
+try {
+  if (!DEMO_MODE) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseOk = true;
+  }
+} catch(e) {
+  console.warn('Firebase init failed:', e);
+}
+
+// =====================================================
+// VIEW ROUTING
+// =====================================================
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  currentView = name;
+  // Show/hide bottom nav
+  const showNav = ['home','leaderboard','insights','history'].includes(name);
+  document.getElementById('bottom-nav').style.display = showNav ? 'flex' : 'none';
+  // Update nav highlight
+  if (showNav) {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    const navEl = document.getElementById('nav-' + name);
+    if (navEl) navEl.classList.add('active');
+  }
+  // Lifecycle
+  window.scrollTo(0, 0);
+  if (name === 'home') { renderHome(); checkPeakBanner(); }
+  if (name === 'leaderboard') loadLeaderboard();
+  if (name === 'insights') loadInsights();
+  if (name === 'history') loadHistory();
+}
+
+function switchNav(name) {
+  showView(name);
+}
+
+// =====================================================
+// LOGIN / REGISTER
+// =====================================================
+async function doLogin() {
+  const empId = (document.getElementById('inp-empid').value || '').trim();
+  const name = (document.getElementById('inp-name').value || '').trim();
+  const errEl = document.getElementById('login-error');
+  const btnEl = document.getElementById('btn-login');
+
+  errEl.style.display = 'none';
+  if (!empId) { errEl.textContent = 'กรุณากรอกรหัสพนักงาน'; errEl.style.display = 'block'; return; }
+  if (!name)  { errEl.textContent = 'กรุณากรอกชื่อที่ต้องการแสดง'; errEl.style.display = 'block'; return; }
+
+  btnEl.disabled = true; btnEl.textContent = 'กำลังตรวจสอบ...';
+
+  try {
+    if (DEMO_MODE || !firebaseOk) {
+      // Demo mode: local only
+      currentUser = { empId, name, isNew: false };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+      enterApp();
+      showToast('⚠️ Demo Mode — กรุณาตั้งค่า Firebase ก่อนใช้จริง');
+    } else {
+      const docRef = db.collection('users').doc(empId);
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        currentUser = { empId, name: docSnap.data().name, isNew: false };
+      } else {
+        await docRef.set({ empId, name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        currentUser = { empId, name, isNew: true };
+      }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+      enterApp();
+      if (currentUser.isNew) showToast(`ยินดีต้อนรับ ${name}! สมัครสมาชิกสำเร็จ 🎉`);
+      else showToast(`ยินดีต้อนรับกลับ ${currentUser.name}! 👋`);
+    }
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = 'เชื่อมต่อ Firebase ไม่ได้ — ตรวจสอบ Config และ Internet';
+    errEl.style.display = 'block';
+  } finally {
+    btnEl.disabled = false; btnEl.textContent = 'เข้าสู่ระบบ / สมัครสมาชิก';
+  }
+}
+
+function enterApp() {
+  document.getElementById('view-login').classList.remove('active');
+  showView('home');
+}
+
+function logout() {
+  if (!confirm('ออกจากระบบ?')) return;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  currentUser = null;
+  localStorage.removeItem(SESSION_KEY);
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('view-login').classList.add('active');
+  document.getElementById('inp-empid').value = '';
+  document.getElementById('inp-name').value = '';
+}
+
+// =====================================================
+// HOME VIEW
+// =====================================================
+async function renderHome() {
+  if (!currentUser) return;
+  document.getElementById('home-name').textContent = currentUser.name;
+
+  if (!firebaseOk || DEMO_MODE) {
+    document.getElementById('stat-floors').textContent = '—';
+    document.getElementById('stat-walks').textContent = '—';
+    document.getElementById('stat-pts').textContent = '—';
+    renderHomeLbPreview([]);
+    renderHomeRecent([]);
+    return;
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+
+  try {
+    // Today's stats — query by empId only, filter date client-side (ไม่ต้อง composite index)
+    const allWalksSnap = await db.collection('walks')
+      .where('empId','==',currentUser.empId)
+      .get();
+    const allWalks = allWalksSnap.docs.map(d => d.data());
+
+    // Filter วันนี้ฝั่ง client
+    const todayWalks = allWalks.filter(w => {
+      if (!w.createdAt) return false;
+      const ts = w.createdAt.toDate ? w.createdAt.toDate() : new Date(w.createdAt);
+      return ts >= today && ts <= todayEnd;
+    });
+
+    const totalFloors = todayWalks.reduce((s,w) => s + (w.floors||0), 0);
+    const totalPts = todayWalks.reduce((s,w) => s + (w.score||0), 0);
+    document.getElementById('stat-floors').textContent = totalFloors;
+    document.getElementById('stat-walks').textContent = todayWalks.length;
+    document.getElementById('stat-pts').textContent = totalPts;
+
+    if (totalFloors > 0) {
+      document.getElementById('home-tagline').textContent = `เดินไปแล้ว ${totalFloors} ชั้น วันนี้ 🔥`;
+    }
+
+    // Leaderboard preview (week) — filter client-side
+    const weekStart = new Date(); weekStart.setHours(0,0,0,0);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+    const allWalksForLb = await db.collection('walks').get();
+    const weekWalks = allWalksForLb.docs.map(d=>d.data()).filter(w => {
+      if (!w.createdAt) return false;
+      const ts = w.createdAt.toDate ? w.createdAt.toDate() : new Date(w.createdAt);
+      return ts >= weekStart;
+    });
+    const lbData = computeLeaderboardFromWalks(weekWalks).slice(0,3);
+    renderHomeLbPreview(lbData);
+
+    // Recent walks — sort client-side, no orderBy needed
+    const recentWalks = allWalks
+      .filter(w => w.createdAt)
+      .sort((a,b) => {
+        const ta = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const tb = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return tb - ta;
+      }).slice(0,5);
+    renderHomeRecent(recentWalks);
+
+  } catch(e) {
+    console.error('renderHome error:', e);
+  }
+}
+
+function renderHomeLbPreview(data) {
+  const medals = ['🥇','🥈','🥉'];
+  const el = document.getElementById('home-lb-preview');
+  if (!data.length) { el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>ยังไม่มีข้อมูล</p></div>'; return; }
+  el.innerHTML = data.slice(0,3).map((u,i) => `
+    <div class="lb-preview-item">
+      <div class="lb-rank">${medals[i] || i+1}</div>
+      <div>
+        <div class="lb-name">${esc(u.name)} ${u.empId===currentUser?.empId?'<span class="lb-me-tag">ฉัน</span>':''}</div>
+        <div class="lb-floors">${u.totalFloors} ชั้น · ${u.totalWalks} ครั้ง</div>
+      </div>
+      <div class="lb-score">${u.score} แต้ม</div>
+    </div>`).join('');
+}
+
+function renderHomeRecent(walks) {
+  const el = document.getElementById('home-recent');
+  if (!walks.length) {
+    el.innerHTML = '<div class="empty-state"><div class="emoji">👟</div><p>ยังไม่มีประวัติ<br>เริ่มเดินเลย!</p></div>';
+    return;
+  }
+  el.innerHTML = walks.map(w => `
+    <div class="walk-item">
+      <div class="walk-dir-badge ${w.direction}">
+        ${w.direction === 'up' ? '⬆️' : '⬇️'}
+      </div>
+      <div class="walk-info">
+        <div class="walk-route">ชั้น ${w.startFloor} → ${w.endFloor}
+          ${w.isPeakTime ? '<span class="badge badge-peak">🔥 Peak</span>' : ''}
+          ${w.photoUrl ? '<span class="badge badge-photo">📸</span>' : ''}
+        </div>
+        <div class="walk-meta">${w.floors} ชั้น · ${formatDuration(w.duration)} · ${formatDate(w.createdAt)}</div>
+      </div>
+      <div class="walk-pts">+${w.score}</div>
+    </div>`).join('');
+}
+
+function checkPeakBanner() {
+  const banner = document.getElementById('home-peak-banner');
+  banner.style.display = isPeakTimeNow() ? 'flex' : 'none';
+}
+
+// =====================================================
+// WALK FLOW
+// =====================================================
+function initWalkSetup() {
+  activeWalk = { startFloor: null, endFloor: null, startTime: null, photo: null, isPeakTime: false };
+  setWalkStep(0);
+  renderFloorGrid('start-floor-grid', null, (f) => {
+    activeWalk.startFloor = f;
+    document.getElementById('btn-confirm-start').disabled = false;
+    document.querySelectorAll('#start-floor-grid .floor-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector(`#start-floor-grid [data-floor="${f}"]`)?.classList.add('selected');
+  });
+  document.getElementById('walk-header-title').textContent = 'เลือกชั้นเริ่ม';
+}
+
+function setWalkStep(step) {
+  walkStep = step;
+  document.querySelectorAll('.walk-step').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('walk-step-' + step);
+  if (el) el.classList.add('active');
+  const titles = ['เลือกชั้นเริ่ม','กำลังเดิน...','เลือกชั้นปลาย','ผลการเดิน'];
+  document.getElementById('walk-header-title').textContent = titles[step] || '';
+}
+
+function renderFloorGrid(gridId, disabledFloor, onSelect) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = FLOORS.map(f => `
+    <button class="floor-btn ${f === disabledFloor ? 'disabled' : ''}"
+      data-floor="${f}">
+      ${FLOOR_DISPLAY[f]}
+    </button>`).join('');
+  // ใช้ addEventListener แทน onclick string (แก้ bug ปุ่มไม่ตอบสนอง)
+  grid.querySelectorAll('.floor-btn:not(.disabled)').forEach(btn => {
+    btn.addEventListener('click', () => onSelect(btn.dataset.floor));
+  });
+}
+
+function confirmStartFloor() {
+  if (!activeWalk.startFloor) return;
+  activeWalk.startTime = Date.now();
+  activeWalk.isPeakTime = isPeakTimeNow();
+  document.getElementById('active-start-floor').textContent = activeWalk.startFloor;
+
+  // Show peak alert or regular camera
+  if (activeWalk.isPeakTime) {
+    document.getElementById('walk-peak-alert').classList.add('show');
+    document.getElementById('walk-cam-regular').style.display = 'none';
+  } else {
+    document.getElementById('walk-peak-alert').classList.remove('show');
+    document.getElementById('walk-cam-regular').style.display = 'block';
+  }
+  document.getElementById('proof-area').style.display = 'none';
+  document.getElementById('proof-grid').innerHTML = '';
+
+  // Start timer
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimer, 1000);
+  updateTimer();
+
+  setWalkStep(1);
+}
+
+function updateTimer() {
+  if (!activeWalk.startTime) return;
+  const elapsed = Math.floor((Date.now() - activeWalk.startTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  document.getElementById('timer-display').textContent =
+    String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
+}
+
+function goToEndFloor() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  activeWalk.duration = Math.floor((Date.now() - activeWalk.startTime) / 1000);
+  setWalkStep(2);
+
+  const prevFloor = activeWalk.startFloor;
+  document.getElementById('direction-preview').classList.remove('show');
+  document.getElementById('btn-save-walk').disabled = true;
+
+  renderFloorGrid('end-floor-grid', null, (f) => {
+    activeWalk.endFloor = f;
+    document.querySelectorAll('#end-floor-grid .floor-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector(`#end-floor-grid [data-floor="${f}"]`)?.classList.add('selected');
+
+    // Show direction
+    const diff = FLOOR_NUMS[f] - FLOOR_NUMS[prevFloor];
+    const floors = Math.abs(diff);
+    const dir = diff > 0 ? 'up' : diff < 0 ? 'down' : 'same';
+
+    if (dir === 'same') {
+      document.getElementById('btn-save-walk').disabled = true;
+      document.getElementById('direction-preview').classList.remove('show');
+      showToast('ชั้นเริ่มต้นและปลายทางเหมือนกัน');
+    } else {
+      activeWalk.direction = dir;
+      activeWalk.floors = floors;
+      document.getElementById('direction-tag').className = `dir-tag ${dir}`;
+      document.getElementById('direction-tag').textContent = dir === 'up' ? `⬆️ เดินขึ้น ${floors} ชั้น` : `⬇️ เดินลง ${floors} ชั้น`;
+      document.getElementById('floors-count-preview').textContent = `ใช้เวลา ${formatDuration(activeWalk.duration)}`;
+      document.getElementById('direction-preview').classList.add('show');
+      document.getElementById('btn-save-walk').disabled = false;
+    }
+  });
+}
+
+// ===== SCORE CALCULATION =====
+function calcWalkScore(floors, duration, isPeakTime, hasPhoto) {
+  const basePoints = floors * 10;
+  const secsPerFloor = duration / Math.max(floors, 1);
+  let speedBonus = 0;
+  if (secsPerFloor < 20) speedBonus = floors * 5;
+  else if (secsPerFloor < 30) speedBonus = floors * 2;
+
+  let peakBonus = 0;
+  if (isPeakTime && hasPhoto) peakBonus = 100;
+  else if (isPeakTime) peakBonus = 30;
+
+  return { basePoints, speedBonus, peakBonus, total: basePoints + speedBonus + peakBonus };
+}
+
+function computeLeaderboardScore(lb) {
+  if (!lb.totalWalks) return 0;
+  const s1 = (lb.totalFloors / lb.totalWalks) * 50;
+  const s2 = lb.totalDuration > 0 ? (lb.totalFloors / (lb.totalDuration / 60)) * 100 : 0;
+  const s3 = (lb.peakProofCount || 0) * 150;
+  return Math.round(s1 + s2 + s3);
+}
+
+function computeLeaderboardFromWalks(walks) {
+  const users = {};
+  walks.forEach(w => {
+    if (!users[w.empId]) users[w.empId] = { empId: w.empId, name: w.userName, totalFloors:0, totalWalks:0, totalDuration:0, peakProofCount:0 };
+    const u = users[w.empId];
+    u.totalFloors += w.floors || 0;
+    u.totalWalks += 1;
+    u.totalDuration += w.duration || 0;
+    if (w.isPeakTime && w.photoUrl) u.peakProofCount += 1;
+  });
+  return Object.values(users).map(u => ({ ...u, score: computeLeaderboardScore(u) }))
+    .sort((a,b) => b.score - a.score);
+}
+
+// ===== SAVE WALK =====
+async function saveWalk() {
+  if (!activeWalk.endFloor || activeWalk.endFloor === activeWalk.startFloor) return;
+
+  const btnSave = document.getElementById('btn-save-walk');
+  btnSave.disabled = true; btnSave.textContent = '⏳ กำลังบันทึก...';
+
+  const scoreResult = calcWalkScore(
+    activeWalk.floors,
+    activeWalk.duration,
+    activeWalk.isPeakTime,
+    !!activeWalk.photo
+  );
+
+  // เก็บรูปเป็น base64 ใน Firestore โดยตรง (ไม่ต้องใช้ Storage)
+  // รูปถูก compress แล้วเหลือ ~100-200KB ซึ่งอยู่ใน 1MB Firestore limit
+  const photoUrl = activeWalk.photo || null;
+
+  const walkData = {
+    empId: currentUser.empId,
+    userName: currentUser.name,
+    startFloor: activeWalk.startFloor,
+    endFloor: activeWalk.endFloor,
+    direction: activeWalk.direction,
+    floors: activeWalk.floors,
+    duration: activeWalk.duration,
+    isPeakTime: activeWalk.isPeakTime,
+    photoUrl: photoUrl,
+    score: scoreResult.total,
+    scoreBase: scoreResult.basePoints,
+    scoreSpeed: scoreResult.speedBonus,
+    scorePeak: scoreResult.peakBonus,
+    createdAt: firebase.firestore?.FieldValue?.serverTimestamp?.() || new Date().toISOString()
+  };
+
+  if (firebaseOk && !DEMO_MODE) {
+    try {
+      await db.collection('walks').add(walkData);
+      await updateLeaderboard(currentUser.empId, walkData);
+    } catch(e) {
+      console.error('Save walk error:', e);
+      showToast('❌ บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+      btnSave.disabled = false; btnSave.textContent = '✓ บันทึกการเดิน';
+      return;
+    }
+  }
+
+  // Show result
+  showResult(walkData, scoreResult);
+  setWalkStep(3);
+}
+
+async function updateLeaderboard(empId, walkData) {
+  const lbRef = db.collection('leaderboard').doc(empId);
+  const lbSnap = await lbRef.get();
+  const prev = lbSnap.exists ? lbSnap.data() : { totalFloors:0, totalWalks:0, totalDuration:0, peakProofCount:0 };
+  const updated = {
+    empId,
+    name: walkData.userName,
+    totalFloors: (prev.totalFloors||0) + walkData.floors,
+    totalWalks: (prev.totalWalks||0) + 1,
+    totalDuration: (prev.totalDuration||0) + walkData.duration,
+    peakProofCount: (prev.peakProofCount||0) + (walkData.isPeakTime && walkData.photoUrl ? 1 : 0),
+    lastWalkAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  updated.score = computeLeaderboardScore(updated);
+  await lbRef.set(updated);
+}
+
+function showResult(walkData, score) {
+  document.getElementById('result-score').textContent = score.total;
+  document.getElementById('result-summary').textContent =
+    `${walkData.direction === 'up' ? '⬆️' : '⬇️'} ชั้น ${walkData.startFloor} → ${walkData.endFloor} · ${walkData.floors} ชั้น · ${formatDuration(walkData.duration)}`;
+
+  document.getElementById('rb-floor-lbl').textContent = `${walkData.floors} ชั้น × 10 แต้ม`;
+  document.getElementById('rb-floor-pts').textContent = score.basePoints + ' แต้ม';
+  document.getElementById('rb-speed-lbl').textContent =
+    `⚡ ความเร็ว (${Math.round(walkData.duration / Math.max(walkData.floors,1))} วิ/ชั้น)`;
+  document.getElementById('rb-speed-pts').textContent = '+' + score.speedBonus;
+  if (score.peakBonus > 0) {
+    document.getElementById('rb-peak-row').style.display = 'flex';
+    document.getElementById('rb-peak-lbl').textContent = walkData.photoUrl ? '🔥 Peak + หลักฐาน' : '🔥 Peak Time';
+    document.getElementById('rb-peak-pts').textContent = '+' + score.peakBonus;
+  } else {
+    document.getElementById('rb-peak-row').style.display = 'none';
+  }
+  document.getElementById('rb-total').textContent = score.total + ' แต้ม';
+}
+
+function finishWalk() {
+  activeWalk = { startFloor:null, endFloor:null, startTime:null, photo:null, isPeakTime:false };
+  showView('home');
+}
+
+function confirmCancelWalk() {
+  if (walkStep === 0 || walkStep === 3) { finishWalk(); return; }
+  if (confirm('ยกเลิกการเดินครั้งนี้?')) {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    finishWalk();
+  }
+}
+
+// =====================================================
+// LEADERBOARD
+// =====================================================
+async function loadLeaderboard() {
+  document.getElementById('lb-content').innerHTML = '<div class="lb-loading">กำลังโหลด...</div>';
+
+  if (!firebaseOk || DEMO_MODE) {
+    document.getElementById('lb-content').innerHTML = '<div class="lb-empty">⚠️ Demo Mode — กรุณาตั้งค่า Firebase</div>';
+    return;
+  }
+
+  try {
+    let walks = [];
+    const now = new Date();
+
+    if (lbCurrentTab === 'all') {
+      // All time: use pre-computed leaderboard collection
+      const snap = await db.collection('leaderboard').orderBy('score','desc').limit(50).get();
+      const allLb = snap.docs.map(d => d.data());
+      renderLeaderboard(allLb);
+      return;
+    } else if (lbCurrentTab === 'today') {
+      const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+      const snap = await db.collection('walks')
+        .where('createdAt','>=',firebase.firestore.Timestamp.fromDate(todayStart))
+        .get();
+      walks = snap.docs.map(d => d.data());
+    } else { // week
+      const weekStart = new Date(now); weekStart.setHours(0,0,0,0);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const snap = await db.collection('walks')
+        .where('createdAt','>=',firebase.firestore.Timestamp.fromDate(weekStart))
+        .get();
+      walks = snap.docs.map(d => d.data());
+    }
+
+    const lbData = computeLeaderboardFromWalks(walks);
+    renderLeaderboard(lbData);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('lb-content').innerHTML = `<div class="lb-empty">❌ โหลดไม่สำเร็จ: ${e.message}</div>`;
+  }
+}
+
+function switchLbTab(tab) {
+  lbCurrentTab = tab;
+  ['today','week','all'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+  });
+  loadLeaderboard();
+}
+
+function renderLeaderboard(data) {
+  if (!data.length) {
+    document.getElementById('lb-content').innerHTML = '<div class="lb-empty">🏃 ยังไม่มีข้อมูล<br>เป็นคนแรกที่เดินบันไดเลย!</div>';
+    return;
+  }
+
+  const top3 = data.slice(0,3);
+  const rest = data.slice(3);
+  const medals = ['🥇','🥈','🥉'];
+  const podiumClass = ['first','second','third'];
+
+  // Reorder: 2nd, 1st, 3rd for visual podium
+  const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+  const podiumPositions = top3.length === 1 ? [top3[0]] : top3.length === 2 ? [top3[1], top3[0]] : podiumOrder;
+  const podiumRanks = top3.length === 1 ? [0] : top3.length === 2 ? [1,0] : [1,0,2];
+
+  let html = `<div class="lb-podium">`;
+  podiumPositions.forEach((u, pi) => {
+    const rank = podiumRanks[pi];
+    html += `
+      <div class="podium-card ${podiumClass[rank]}">
+        <div class="podium-medal">${medals[rank]}</div>
+        <div class="podium-name">${esc(u.name)} ${u.empId===currentUser?.empId?'(ฉัน)':''}</div>
+        <div class="podium-score">${u.score}</div>
+        <div class="podium-floors">${u.totalFloors} ชั้น</div>
+      </div>`;
+  });
+  html += `</div>`;
+
+  if (rest.length > 0) {
+    html += `<div class="lb-list">`;
+    rest.forEach((u, i) => {
+      const isMe = u.empId === currentUser?.empId;
+      html += `
+        <div class="lb-list-item ${isMe ? 'me' : ''}">
+          <div class="lb-list-rank">${i+4}</div>
+          <div>
+            <div class="lb-list-name">${esc(u.name)} ${isMe ? '<span class="lb-me-tag">ฉัน</span>' : ''}</div>
+            <div class="lb-list-sub">${u.totalFloors} ชั้น · ${u.totalWalks} ครั้ง</div>
+          </div>
+          <div class="lb-list-score">${u.score} แต้ม</div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Check if current user is not in top list
+  const myEntry = data.find(u => u.empId === currentUser?.empId);
+  const myRank = data.findIndex(u => u.empId === currentUser?.empId) + 1;
+  if (myRank > 3 && !rest.find(u => u.empId === currentUser?.empId)) {
+    // already shown in rest
+  }
+
+  document.getElementById('lb-content').innerHTML = html;
+}
+
+// =====================================================
+// INSIGHTS
+// =====================================================
+async function loadInsights() {
+  const el = document.getElementById('insights-content');
+  el.innerHTML = '<div class="insights-loading">🔍 กำลังวิเคราะห์ข้อมูล...</div>';
+
+  if (!firebaseOk || DEMO_MODE) {
+    el.innerHTML = '<div class="insights-loading">⚠️ Demo Mode — กรุณาตั้งค่า Firebase ก่อน</div>';
+    return;
+  }
+
+  try {
+    const snap = await db.collection('walks').orderBy('createdAt','desc').limit(500).get();
+    const walks = snap.docs.map(d => d.data()).filter(w => w.floors > 0 && w.duration > 0);
+
+    if (walks.length < 3) {
+      el.innerHTML = '<div class="insights-loading">🏃 ต้องการข้อมูลอีกนิด... เดินต่อเลย!</div>';
+      return;
+    }
+
+    // Aggregate per user
+    const users = {};
+    walks.forEach(w => {
+      if (!users[w.empId]) users[w.empId] = { name: w.userName, walks: [], empId: w.empId };
+      users[w.empId].walks.push(w);
+    });
+
+    const userList = Object.values(users).filter(u => u.walks.length >= 1);
+    const avgSecPerFloor = u => u.walks.reduce((s,w) => s + (w.duration / Math.max(w.floors,1)), 0) / u.walks.length;
+
+    const slowest = [...userList].sort((a,b) => avgSecPerFloor(b) - avgSecPerFloor(a))[0];
+    const fastest = [...userList].sort((a,b) => avgSecPerFloor(a) - avgSecPerFloor(b))[0];
+    const mostFloors = [...userList].sort((a,b) =>
+      b.walks.reduce((s,w)=>s+w.floors,0) - a.walks.reduce((s,w)=>s+w.floors,0))[0];
+    const mostPeakProof = [...userList].sort((a,b) =>
+      b.walks.filter(w=>w.isPeakTime&&w.photoUrl).length - a.walks.filter(w=>w.isPeakTime&&w.photoUrl).length)[0];
+    const noProof = [...userList].filter(u => !u.walks.some(w=>w.photoUrl)).sort((a,b)=>b.walks.length-a.walks.length)[0];
+    const mostSessions = [...userList].sort((a,b) => b.walks.length - a.walks.length)[0];
+
+    // Popular route
+    const routes = {};
+    walks.forEach(w => { const r = `${w.startFloor}→${w.endFloor}`; routes[r] = (routes[r]||0)+1; });
+    const topRoute = Object.entries(routes).sort((a,b)=>b[1]-a[1])[0];
+
+    // Peak hour distribution
+    const hours = {};
+    walks.forEach(w => {
+      if (w.createdAt?.toDate) {
+        const h = w.createdAt.toDate().getHours();
+        hours[h] = (hours[h]||0) + 1;
+      }
+    });
+    const topHour = Object.entries(hours).sort((a,b)=>b[1]-a[1])[0];
+
+    const cards = [
+      { icon:'🐢', title:'นักเดินช้าที่สุด', name: slowest.name, value:`เฉลี่ย ${Math.round(avgSecPerFloor(slowest))} วิ/ชั้น` },
+      { icon:'⚡', title:'นักเดินเร็วที่สุด', name: fastest.name, value:`เฉลี่ย ${Math.round(avgSecPerFloor(fastest))} วิ/ชั้น — เร็วมาก!` },
+      { icon:'🏆', title:'ยอดนักสะสมชั้น', name: mostFloors.name, value:`${mostFloors.walks.reduce((s,w)=>s+w.floors,0)} ชั้นรวม` },
+      { icon:'🔥', title:'แชมป์ Peak Time หลักฐาน', name: mostPeakProof.name, value:`${mostPeakProof.walks.filter(w=>w.isPeakTime&&w.photoUrl).length} ครั้งที่มีหลักฐาน` },
+      { icon:'📸', title:'นักเดินไม่ยอมถ่ายรูป', name: noProof ? noProof.name : '—', value: noProof ? `${noProof.walks.length} ครั้ง ไม่มีหลักฐานเลย! 😅` : 'ทุกคนถ่ายรูปหมด 🎉' },
+      { icon:'🎯', title:'เส้นทางยอดนิยม', name: topRoute ? `ชั้น ${topRoute[0]}` : '—', value: topRoute ? `${topRoute[1]} ครั้ง` : '' },
+      { icon:'🕐', title:'ชั่วโมงขยันที่สุด', name: topHour ? `${topHour[0]}:00 น.` : '—', value: topHour ? `${topHour[1]} ครั้งในชั่วโมงนี้` : '' },
+      { icon:'💪', title:'นักเดินบ่อยที่สุด', name: mostSessions.name, value:`${mostSessions.walks.length} ครั้งทั้งหมด` },
+    ];
+
+    el.innerHTML = `<div class="insight-cards">` + cards.map(c => `
+      <div class="insight-card">
+        <div class="insight-icon">${c.icon}</div>
+        <div class="insight-body">
+          <div class="insight-title">${c.title}</div>
+          <div class="insight-name">${esc(c.name)}</div>
+          <div class="insight-value">${esc(c.value)}</div>
+        </div>
+      </div>`).join('') + `
+      <div style="padding:8px;text-align:center;font-size:12px;color:var(--gray3);">
+        วิเคราะห์จาก ${walks.length} การเดินล่าสุด
+      </div>
+    </div>`;
+
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = `<div class="insights-loading">❌ โหลดไม่สำเร็จ</div>`;
+  }
+}
+
+// =====================================================
+// HISTORY
+// =====================================================
+async function loadHistory() {
+  const el = document.getElementById('history-content');
+  el.innerHTML = '<div class="loading-spinner">กำลังโหลด...</div>';
+
+  if (!currentUser || !firebaseOk || DEMO_MODE) {
+    el.innerHTML = '<div class="empty-state"><div class="emoji">📋</div><p>Demo Mode</p></div>';
+    return;
+  }
+
+  try {
+    // Query by empId only — sort client-side เพื่อไม่ต้อง composite index
+    const snap = await db.collection('walks')
+      .where('empId','==',currentUser.empId)
+      .get();
+    const walks = snap.docs.map(d => d.data())
+      .filter(w => w.createdAt)
+      .sort((a,b) => {
+        const ta = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const tb = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return tb - ta;
+      }).slice(0,30);
+
+    if (!walks.length) {
+      el.innerHTML = '<div class="empty-state"><div class="emoji">👟</div><p>ยังไม่มีประวัติการเดิน<br>เริ่มเดินบันไดเลย!</p></div>';
+      return;
+    }
+
+    el.innerHTML = walks.map(w => `
+      <div class="history-item">
+        <div class="history-dir ${w.direction}">
+          ${w.direction === 'up' ? '⬆️' : '⬇️'}
+        </div>
+        <div class="history-info">
+          <div class="history-route">ชั้น ${w.startFloor} → ${w.endFloor} · ${w.floors} ชั้น
+            ${w.isPeakTime ? '<span class="badge badge-peak">🔥</span>' : ''}
+            ${w.photoUrl ? '<span class="badge badge-photo">📸</span>' : ''}
+          </div>
+          <div class="history-meta">
+            ${formatDuration(w.duration)}
+            · ${Math.round((w.duration||1) / Math.max(w.floors||1,1))} วิ/ชั้น
+            · ${formatDate(w.createdAt)}
+          </div>
+        </div>
+        <div class="history-right">
+          <div class="history-pts">+${w.score}</div>
+          <div class="history-time">${w.isPeakTime ? '🔥 Peak' : ''}</div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = `<div class="empty-state"><p>❌ โหลดไม่สำเร็จ</p></div>`;
+  }
+}
+
+// =====================================================
+// CAMERA SYSTEM (from reference)
+// =====================================================
+function openPhotoInput() {
+  document.getElementById('action-sheet-bg').classList.add('open');
+}
+
+function closeActionSheet(e) {
+  if (e && e.target !== document.getElementById('action-sheet-bg')) return;
+  document.getElementById('action-sheet-bg').classList.remove('open');
+}
+
+async function openInAppCamera() {
+  closeActionSheet();
+  const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  if (!supported) { showToast('กล้องไม่รองรับ — ใช้แกลเลอรี่แทน'); openGalleryPicker(); return; }
+  await startCameraStream();
+}
+
+async function startCameraStream() {
+  if (_camStream) _camStream.getTracks().forEach(t => t.stop());
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: _camFacing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    document.getElementById('cam-video').srcObject = _camStream;
+    document.getElementById('cam-overlay').classList.add('open');
+  } catch(err) {
+    const msg = err.name === 'NotAllowedError'
+      ? 'กรุณาอนุญาตการใช้กล้อง'
+      : 'เปิดกล้องไม่ได้: ' + err.message;
+    showToast(msg);
+    openGalleryPicker();
+  }
+}
+
+function closeCamera() {
+  if (_camStream) _camStream.getTracks().forEach(t => t.stop());
+  _camStream = null;
+  document.getElementById('cam-overlay').classList.remove('open');
+}
+
+async function flipCamera() {
+  _camFacing = _camFacing === 'environment' ? 'user' : 'environment';
+  await startCameraStream();
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.createElement('canvas');
+  let w = video.videoWidth, h = video.videoHeight;
+  const MAX = 1280;
+  if (w > MAX || h > MAX) {
+    if (w >= h) { h = Math.round(h*MAX/w); w = MAX; }
+    else { w = Math.round(w*MAX/h); h = MAX; }
+  }
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+  _capturedB64 = canvas.toDataURL('image/jpeg', 0.82);
+  document.getElementById('cam-preview-img').src = _capturedB64;
+  document.getElementById('cam-preview-overlay').classList.add('open');
+}
+
+function retakePhoto() {
+  _capturedB64 = null;
+  document.getElementById('cam-preview-overlay').classList.remove('open');
+}
+
+function usePhoto() {
+  if (_capturedB64) {
+    activeWalk.photo = _capturedB64;
+    renderProofArea();
+  }
+  _capturedB64 = null;
+  document.getElementById('cam-preview-overlay').classList.remove('open');
+  closeCamera();
+  showToast('เพิ่มหลักฐานสำเร็จ 📸');
+}
+
+function openGalleryPicker() {
+  closeActionSheet();
+  const inp = document.getElementById('file-input');
+  inp.value = '';
+  inp.onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    activeWalk.photo = await fileToCompressedBase64(f);
+    renderProofArea();
+    showToast('เพิ่มหลักฐานสำเร็จ 📸');
+  };
+  inp.click();
+}
+
+function renderProofArea() {
+  const area = document.getElementById('proof-area');
+  const grid = document.getElementById('proof-grid');
+  if (activeWalk.photo) {
+    area.style.display = 'block';
+    grid.innerHTML = `
+      <div class="proof-thumb-wrap">
+        <img src="${activeWalk.photo}" class="proof-thumb">
+        <button class="proof-remove" onclick="removeProofPhoto()">✕</button>
+      </div>`;
+  } else {
+    area.style.display = 'none';
+    grid.innerHTML = '';
+  }
+}
+
+function removeProofPhoto() {
+  activeWalk.photo = null;
+  renderProofArea();
+}
+
+function fileToCompressedBase64(file, maxPx=1024, quality=0.75) {
+  return new Promise(res => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w >= h) { h = Math.round(h*maxPx/w); w = maxPx; }
+        else { w = Math.round(w*maxPx/h); h = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); };
+    img.src = url;
+  });
+}
+
+function dataURItoBlob(dataURI) {
+  const byteString = atob(dataURI.split(',')[1]);
+  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  return new Blob([ab], { type: mimeString });
+}
+
+// =====================================================
+// UTILITIES
+// =====================================================
+function isPeakTimeNow(d) {
+  const date = d || new Date();
+  const mins = date.getHours() * 60 + date.getMinutes();
+  return PEAK_HOURS.some(p => mins >= p.start && mins <= p.end);
+}
+
+function formatDuration(secs) {
+  if (!secs) return '0 วิ';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  if (m === 0) return `${s} วิ`;
+  return `${m} น ${s} วิ`;
+}
+
+function formatDate(val) {
+  try {
+    const d = val?.toDate ? val.toDate() : new Date(val);
+    if (isNaN(d)) return '';
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) {
+      return d.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+    }
+    return d.toLocaleDateString('th-TH', { day:'numeric', month:'short' });
+  } catch { return ''; }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// =====================================================
+// INIT
+// =====================================================
+(function init() {
+  // Show setup overlay if Firebase not configured
+  if (DEMO_MODE) {
+    document.getElementById('setup-overlay').classList.add('show');
+  }
+
+  // Check existing session
+  try {
+    const saved = localStorage.getItem(SESSION_KEY);
+    if (saved) {
+      currentUser = JSON.parse(saved);
+      if (currentUser?.empId) {
+        enterApp();
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Show login
+  showView('login');
+  document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('view-login').classList.add('active');
+})();
+</script>
+</body>
+</html>
