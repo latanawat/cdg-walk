@@ -158,6 +158,21 @@ input { font-family: inherit; }
 .stat-pill .val { font-size: 22px; font-weight: 800; line-height: 1; }
 .stat-pill .lbl { font-size: 11px; opacity: 0.8; margin-top: 3px; }
 
+.calorie-banner {
+  margin-top: 10px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 8px 14px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 13px; font-weight: 600; opacity: 0.92;
+}
+.calorie-banner .cal-val {
+  font-size: 18px; font-weight: 800; line-height: 1;
+}
+.calorie-banner .cal-unit {
+  font-size: 11px; opacity: 0.75;
+}
+
 .section-label {
   padding: 16px 16px 8px; font-size: 12px; font-weight: 700;
   color: var(--gray3); text-transform: uppercase; letter-spacing: 0.5px;
@@ -463,6 +478,45 @@ input { font-family: inherit; }
 
 .insights-loading { padding: 48px; text-align: center; color: var(--gray3); }
 
+/* ===== ANIMAL TEAM SECTION ===== */
+.animal-team-section {
+  margin: 4px 12px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--gray2);
+  background: var(--white);
+  overflow: hidden;
+}
+.animal-team-header {
+  background: linear-gradient(120deg, #312e81 0%, #6366f1 100%);
+  color: #fff; padding: 14px 16px 10px;
+}
+.animal-team-header h3 { font-size: 15px; font-weight: 800; }
+.animal-team-header p  { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+.animal-team-list { padding: 8px 0; }
+.animal-team-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gray);
+}
+.animal-team-row:last-child { border-bottom: none; }
+.animal-team-rank {
+  font-size: 16px; font-weight: 800; width: 28px;
+  color: var(--text2); text-align: center; flex-shrink: 0;
+}
+.animal-team-emoji { font-size: 28px; flex-shrink: 0; }
+.animal-team-info { flex: 1; min-width: 0; }
+.animal-team-name { font-size: 14px; font-weight: 700; }
+.animal-team-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.animal-team-bar-wrap {
+  height: 4px; background: var(--gray2); border-radius: 2px; margin-top: 5px;
+}
+.animal-team-bar { height: 4px; border-radius: 2px; background: var(--primary); }
+.animal-team-floors {
+  font-size: 18px; font-weight: 800; color: var(--primary);
+  flex-shrink: 0; text-align: right;
+}
+.animal-team-floors span { font-size: 11px; color: var(--text2); font-weight: 500; display: block; }
+
 /* ===== HISTORY VIEW ===== */
 .history-empty { padding: 48px 20px; text-align: center; color: var(--gray3); font-size: 14px; }
 .history-item {
@@ -598,6 +652,9 @@ input { font-family: inherit; }
         <div class="stat-pill"><div class="val" id="stat-floors">0</div><div class="lbl">ชั้นวันนี้</div></div>
         <div class="stat-pill"><div class="val" id="stat-walks">0</div><div class="lbl">ครั้งวันนี้</div></div>
         <div class="stat-pill"><div class="val" id="stat-pts">0</div><div class="lbl">ชั้นสะสมเดือนนี้</div></div>
+      </div>
+      <div class="calorie-banner">
+        🔥 เผาผลาญวันนี้ <span class="cal-val" id="stat-cal">0</span><span class="cal-unit">kcal</span>
       </div>
     </div>
 
@@ -883,6 +940,11 @@ let walkStep = 0;
 let activeWalk = { startFloor: null, endFloor: null, startTime: null };
 let timerInterval = null;
 
+// ===== WALKS CACHE (ลด Firestore reads จาก ~250 → ~1 ต่อ session) =====
+let _walksCache = null;   // all walks (array)
+let _walksCacheAt = 0;    // timestamp ที่โหลดล่าสุด
+const CACHE_TTL = 5 * 60 * 1000; // 5 นาที
+
 // ===== FIREBASE INIT =====
 let firebaseOk = false;
 try {
@@ -914,7 +976,7 @@ function showView(name) {
   // Lifecycle
   window.scrollTo(0, 0);
   if (name === 'home') { renderHome(); }
-  if (name === 'leaderboard') loadLeaderboard(true);
+  if (name === 'leaderboard') loadLeaderboard(false);
   if (name === 'insights') loadInsights();
   if (name === 'history') loadHistory();
 }
@@ -986,6 +1048,22 @@ function logout() {
 }
 
 // =====================================================
+// WALKS CACHE HELPER
+// =====================================================
+// ดึง walks ทั้งหมดจาก Firestore ครั้งเดียว แล้วเก็บ cache ไว้
+// ทุก view ใช้ฟังก์ชันนี้แทนการ db.collection('walks').get() เอง
+async function getWalksCache(forceRefresh) {
+  if (forceRefresh || !_walksCache || (Date.now() - _walksCacheAt) > CACHE_TTL) {
+    const snap = await db.collection('walks').get();
+    _walksCache = snap.docs.map(d => d.data());
+    _walksCacheAt = Date.now();
+    // sync lbAllWalks ด้วยเสมอ
+    lbAllWalks = _walksCache;
+  }
+  return _walksCache;
+}
+
+// =====================================================
 // HOME VIEW
 // =====================================================
 async function renderHome() {
@@ -1007,11 +1085,9 @@ async function renderHome() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   try {
-    // Query by empId only, filter client-side
-    const allWalksSnap = await db.collection('walks')
-      .where('empId','==',currentUser.empId)
-      .get();
-    const allWalks = allWalksSnap.docs.map(d => d.data());
+    // ใช้ global cache — ไม่ต้อง query Firestore ซ้ำถ้า view อื่นโหลดไปแล้ว
+    const allWalksAll = await getWalksCache();
+    const allWalks = allWalksAll.filter(w => w.empId === currentUser.empId);
 
     // Filter วันนี้
     const todayWalks = allWalks.filter(w => {
@@ -1028,17 +1104,22 @@ async function renderHome() {
 
     const totalFloors = todayWalks.reduce((s,w) => s + (w.floors||0), 0);
     const monthFloors = monthWalks.reduce((s,w) => s + (w.floors||0), 0);
+    // แคลอรี่วันนี้ — ขึ้น 1 ชั้น = 10 kcal, ลง 1 ชั้น = 5 kcal (ไม่มี Firestore read เพิ่ม)
+    const todayCalories = todayWalks.reduce((s,w) => {
+      const cal = w.direction === 'up' ? (w.floors||0) * 10 : (w.floors||0) * 5;
+      return s + cal;
+    }, 0);
     document.getElementById('stat-floors').textContent = totalFloors;
     document.getElementById('stat-walks').textContent = todayWalks.length;
     document.getElementById('stat-pts').textContent = monthFloors;
+    document.getElementById('stat-cal').textContent = todayCalories;
 
     if (totalFloors > 0) {
       document.getElementById('home-tagline').textContent = `เดินไปแล้ว ${totalFloors} ชั้น วันนี้ 🔥`;
     }
 
-    // Leaderboard preview (month)
-    const allWalksForLb = await db.collection('walks').get();
-    const monthAllWalks = allWalksForLb.docs.map(d=>d.data()).filter(w => {
+    // Leaderboard preview (month) — filter จาก cache เดิม ไม่ต้อง query ใหม่
+    const monthAllWalks = allWalksAll.filter(w => {
       if (!w.createdAt) return false;
       const ts = w.createdAt.toDate ? w.createdAt.toDate() : new Date(w.createdAt);
       return ts >= monthStart;
@@ -1232,6 +1313,11 @@ async function saveWalk() {
     try {
       await db.collection('walks').add(walkData);
       await updateLeaderboard(currentUser.empId, walkData);
+      // เพิ่ม walk ใหม่เข้า cache ทันที (ไม่ต้อง refetch จาก Firestore)
+      if (_walksCache) {
+        _walksCache.push({ ...walkData, createdAt: new Date() });
+        lbAllWalks = _walksCache;
+      }
     } catch(e) {
       console.error('Save walk error:', e);
       showToast('❌ บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
@@ -1296,11 +1382,9 @@ async function loadLeaderboard(forceRefresh) {
   }
 
   try {
-    if (!lbAllWalks || forceRefresh) {
-      const snap = await db.collection('walks').get();
-      lbAllWalks = snap.docs.map(d => d.data());
-    }
-    // Reset to current month on first load
+    // getWalksCache จะ sync lbAllWalks ให้อัตโนมัติ
+    lbAllWalks = await getWalksCache(forceRefresh);
+    // Reset to current month on force refresh
     if (forceRefresh) {
       lbYear  = new Date().getFullYear();
       lbMonth = new Date().getMonth();
@@ -1345,6 +1429,38 @@ const ANIMAL_AVATARS = [
   '🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦆','🦉','🐺',
   '🐴','🦄','🐝','🐢','🦋','🐬','🦈','🦀','🦦','🦥'
 ];
+const ANIMAL_NAMES = {
+  '🐶':'หมาน้อยผู้กล้าหาญ',
+  '🐱':'แมวเก้าชีวิตไม่ยอมแพ้',
+  '🐭':'หนูน้อยจอมซน',
+  '🐹':'แฮมสเตอร์จอมวิ่ง',
+  '🐰':'กระต่ายนุ่มนิ่มหัวใจเหล็ก',
+  '🦊':'จิ้งจอกจอมเจ้าเล่ห์',
+  '🐻':'หมีอ้วนอุ้ยอ้ายหัวใจแกร่ง',
+  '🐼':'แพนด้าจอมขยัน',
+  '🐨':'โคอาล่าสุดน่ารัก',
+  '🐯':'เสือสายฟ้าแลบ',
+  '🦁':'สิงโตราชาแห่งบันได',
+  '🐮':'วัวแข็งแกร่งไม่หยุดพัก',
+  '🐷':'หมูน้อยจอมซิ่ง',
+  '🐸':'กบจอมกระโดด',
+  '🐵':'ลิงจอมป่วน',
+  '🐔':'ไก่ขยันแต่เช้า',
+  '🐧':'เพนกวินจอมเดินสง่า',
+  '🦆':'เป็ดน้อยผู้ไม่ย่อท้อ',
+  '🦉':'นกฮูกจอมรอบรู้',
+  '🐺':'หมาป่าผู้ไม่รู้จักแพ้',
+  '🐴':'ม้าแปดกีบสายฟ้า',
+  '🦄':'ยูนิคอร์นสุดพิเศษ',
+  '🐝':'ผึ้งน้อยจอมขยัน',
+  '🐢':'เต่าจอมทนทาน',
+  '🦋':'ผีเสื้อบินสูงไม่หยุด',
+  '🐬':'โลมาจอมฉลาด',
+  '🦈':'ฉลามสยายครีบ',
+  '🦀':'ปูเดินข้างสู้ไม่ถอย',
+  '🦦':'นากจอมซน',
+  '🦥':'สลอธแม้ช้าแต่ไม่หยุด'
+};
 function getAnimal(empId) {
   if (!empId) return '🐾';
   let hash = 0;
@@ -1484,8 +1600,8 @@ async function loadInsights() {
   }
 
   try {
-    const snap = await db.collection('walks').limit(500).get();
-    const walks = snap.docs.map(d => d.data())
+    const allWalks = await getWalksCache();
+    const walks = allWalks
       .filter(w => w.floors > 0 && w.duration > 0)
       .sort((a,b) => {
         const ta = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt||0);
@@ -1538,6 +1654,50 @@ async function loadInsights() {
       { icon:'💪', title:'นักเดินบ่อยที่สุด', name: mostSessions.name, value:`${mostSessions.walks.length} ครั้งทั้งหมด` },
     ];
 
+    // ===== ANIMAL TEAM — group users by avatar, sum floors =====
+    // คำนวณจาก allWalks (cache) — 0 Firestore reads เพิ่ม
+    const animalMap = {};
+    Object.values(users).forEach(u => {
+      const emoji = getAnimal(u.empId);
+      if (!animalMap[emoji]) animalMap[emoji] = { emoji, totalFloors: 0, members: [], walkCount: 0 };
+      const uFloors = u.walks.reduce((s,w) => s + (w.floors||0), 0);
+      animalMap[emoji].totalFloors += uFloors;
+      animalMap[emoji].walkCount   += u.walks.length;
+      animalMap[emoji].members.push(u.name);
+    });
+    const animalTeams = Object.values(animalMap)
+      .sort((a,b) => b.totalFloors - a.totalFloors);
+    const maxTeamFloors = animalTeams[0]?.totalFloors || 1;
+    const medals = ['🥇','🥈','🥉'];
+
+    const animalTeamHtml = `
+      <div class="animal-team-section">
+        <div class="animal-team-header">
+          <h3>🐾 ทีมสัตว์ — รวมพลังกัน!</h3>
+          <p>คะแนนรวมของทุกคนที่มี avatar สัตว์เดียวกัน</p>
+        </div>
+        <div class="animal-team-list">
+          ${animalTeams.map((t, i) => {
+            const pct = Math.max(6, Math.round((t.totalFloors / maxTeamFloors) * 100));
+            const rankLabel = i < 3 ? medals[i] : `${i+1}`;
+            const memberText = ANIMAL_NAMES[t.emoji] || t.emoji;
+            return `
+            <div class="animal-team-row">
+              <div class="animal-team-rank">${rankLabel}</div>
+              <div class="animal-team-emoji">${t.emoji}</div>
+              <div class="animal-team-info">
+                <div class="animal-team-name">${memberText}</div>
+                <div class="animal-team-meta">${t.members.length} คน · ${t.walkCount} ครั้ง</div>
+                <div class="animal-team-bar-wrap">
+                  <div class="animal-team-bar" style="width:${pct}%"></div>
+                </div>
+              </div>
+              <div class="animal-team-floors">${t.totalFloors}<span>ชั้น</span></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+
     el.innerHTML = `<div class="insight-cards">` + cards.map(c => `
       <div class="insight-card">
         <div class="insight-icon">${c.icon}</div>
@@ -1548,9 +1708,9 @@ async function loadInsights() {
         </div>
       </div>`).join('') + `
       <div style="padding:8px;text-align:center;font-size:12px;color:var(--gray3);">
-        วิเคราะห์จาก ${walks.length} การเดินล่าสุด
+        วิเคราะห์จาก ${walks.length} การเดินทั้งหมด
       </div>
-    </div>`;
+    </div>` + animalTeamHtml;
 
   } catch(e) {
     console.error(e);
@@ -1571,12 +1731,10 @@ async function loadHistory() {
   }
 
   try {
-    // Query by empId only — sort client-side เพื่อไม่ต้อง composite index
-    const snap = await db.collection('walks')
-      .where('empId','==',currentUser.empId)
-      .get();
-    const walks = snap.docs.map(d => d.data())
-      .filter(w => w.createdAt)
+    // ใช้ cache — filter เฉพาะ walks ของ user นี้ client-side
+    const allWalks = await getWalksCache();
+    const walks = allWalks
+      .filter(w => w.empId === currentUser.empId && w.createdAt)
       .sort((a,b) => {
         const ta = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
         const tb = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
