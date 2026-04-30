@@ -608,6 +608,82 @@ input { font-family: inherit; }
 .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; }
 .loading-spinner { padding: 48px; text-align: center; color: var(--gray3); font-size: 14px; }
+
+/* ===== CHAMPION BOARD ===== */
+.champ-board { padding: 0 12px 16px; }
+
+.champ-post-box {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px solid #f59e0b;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.champ-post-label {
+  font-size: 12px; font-weight: 700; color: #b45309;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 5px;
+}
+.champ-post-input {
+  width: 100%; border: 1.5px solid #fcd34d;
+  border-radius: 10px; padding: 10px 12px;
+  font-family: inherit; font-size: 14px;
+  background: #fff; outline: none; resize: none;
+  color: var(--text); line-height: 1.5;
+}
+.champ-post-input:focus { border-color: #f59e0b; }
+.champ-post-footer {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-top: 8px;
+}
+.champ-char-count { font-size: 11px; color: var(--gray3); }
+.champ-char-count.warn { color: var(--red); }
+.btn-champ-post {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff; border: none; border-radius: 10px;
+  padding: 8px 18px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.btn-champ-post:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.champ-locked {
+  text-align: center; padding: 10px;
+  font-size: 12px; color: var(--gray3);
+  background: var(--gray); border-radius: 10px;
+  margin-bottom: 12px;
+}
+.champ-locked strong { color: var(--text2); }
+
+.champ-post-card {
+  background: var(--white);
+  border: 1px solid var(--gray2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.champ-post-card:last-child { margin-bottom: 0; }
+.champ-card-top {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 7px;
+}
+.champ-avatar { font-size: 22px; flex-shrink: 0; }
+.champ-user-info { flex: 1; min-width: 0; }
+.champ-user-name {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.champ-user-meta { font-size: 11px; color: var(--gray3); margin-top: 1px; }
+.champ-floors-badge {
+  background: var(--primary-light); color: var(--primary);
+  font-size: 11px; font-weight: 700;
+  padding: 3px 8px; border-radius: 20px; flex-shrink: 0;
+}
+.champ-message {
+  font-size: 14px; color: var(--text);
+  line-height: 1.5; word-break: break-word;
+}
+.champ-empty {
+  text-align: center; padding: 24px 12px;
+  font-size: 13px; color: var(--gray3);
+}
 </style>
 </head>
 
@@ -672,14 +748,11 @@ input { font-family: inherit; }
       <div class="loading-spinner">กำลังโหลด...</div>
     </div>
 
-    <!-- Recent walks -->
+    <!-- Champion Board -->
     <div class="divider"></div>
-    <div class="section-label">📋 การเดินล่าสุดของคุณ</div>
-    <div id="home-recent">
-      <div class="empty-state">
-        <div class="emoji">👟</div>
-        <p>ยังไม่มีประวัติการเดิน<br>เริ่มเดินบันไดครั้งแรกเลย!</p>
-      </div>
+    <div class="section-label">🏅 กระดานผู้พิชิต</div>
+    <div id="champ-board-wrap" class="champ-board">
+      <div class="loading-spinner">กำลังโหลด...</div>
     </div>
   </div>
 
@@ -945,6 +1018,11 @@ let _walksCache = null;   // all walks (array)
 let _walksCacheAt = 0;    // timestamp ที่โหลดล่าสุด
 const CACHE_TTL = 5 * 60 * 1000; // 5 นาที
 
+// ===== ANNOUNCEMENTS CACHE =====
+let _annCache = null;     // posts array (max 5)
+let _annCacheAt = 0;
+const ANN_TTL = 2 * 60 * 1000; // 2 นาที (โพสใหม่ควรเห็นเร็ว)
+
 // ===== FIREBASE INIT =====
 let firebaseOk = false;
 try {
@@ -1048,6 +1126,177 @@ function logout() {
 }
 
 // =====================================================
+// CHAMPION BOARD
+// =====================================================
+const CHAMP_MIN_FLOORS = 20; // ชั้นขั้นต่ำต่อวันเพื่อได้สิทธิ์โพส
+const CHAMP_MAX_POSTS  = 5;  // จำนวนโพสที่แสดงสูงสุด
+const CHAMP_MAX_CHARS  = 100;
+
+async function loadAnnouncementsCache(forceRefresh) {
+  if (forceRefresh || !_annCache || (Date.now() - _annCacheAt) > ANN_TTL) {
+    try {
+      const snap = await db.collection('announcements').doc('board').get();
+      _annCache = snap.exists ? (snap.data().posts || []) : [];
+    } catch(e) {
+      _annCache = _annCache || [];
+    }
+    _annCacheAt = Date.now();
+  }
+  return _annCache;
+}
+
+async function renderChampBoard(todayFloors) {
+  const wrap = document.getElementById('champ-board-wrap');
+  const posts = await loadAnnouncementsCache();
+  const canPost = todayFloors >= CHAMP_MIN_FLOORS;
+
+  // เช็คว่าโพสไปแล้วในวันนี้หรือยัง (จาก cache — 0 reads)
+  const todayStr = new Date().toDateString();
+  const alreadyPostedToday = posts.some(p => {
+    if (p.empId !== currentUser?.empId) return false;
+    const d = p.createdAt ? new Date(p.createdAt) : null;
+    return d && d.toDateString() === todayStr;
+  });
+
+  // ส่วน input (แสดงเฉพาะคนที่มีสิทธิ์)
+  let inputHtml = '';
+  if (!firebaseOk || DEMO_MODE) {
+    inputHtml = '';
+  } else if (canPost && alreadyPostedToday) {
+    inputHtml = `
+      <div class="champ-locked">
+        ✅ <strong>โพสแล้ววันนี้!</strong> กลับมาโพสใหม่ได้พรุ่งนี้นะ 👋
+      </div>`;
+  } else if (canPost) {
+    inputHtml = `
+      <div class="champ-post-box">
+        <div class="champ-post-label">🏅 คุณมีสิทธิ์โพสวันนี้! (เดินแล้ว ${todayFloors} ชั้น)</div>
+        <textarea class="champ-post-input" id="champ-input"
+          placeholder="แชร์ประโยคสร้างแรงบันดาลใจ... (ไม่เกิน ${CHAMP_MAX_CHARS} ตัวอักษร)"
+          rows="2" maxlength="${CHAMP_MAX_CHARS}"
+          oninput="updateChampCount()"></textarea>
+        <div class="champ-post-footer">
+          <span class="champ-char-count" id="champ-count">0 / ${CHAMP_MAX_CHARS}</span>
+          <button class="btn-champ-post" id="btn-champ-post" onclick="postAnnouncement()" disabled>
+            📣 โพสเลย!
+          </button>
+        </div>
+      </div>`;
+  } else if (firebaseOk) {
+    const remaining = CHAMP_MIN_FLOORS - todayFloors;
+    inputHtml = `
+      <div class="champ-locked">
+        🔒 <strong>เดินอีก ${remaining} ชั้นวันนี้</strong> เพื่อปลดล็อกสิทธิ์โพส
+      </div>`;
+  }
+
+  // โพสล่าสุด
+  let postsHtml = '';
+  if (!posts.length) {
+    postsHtml = `<div class="champ-empty">✨ ยังไม่มีโพส<br>เดินให้ครบ ${CHAMP_MIN_FLOORS} ชั้นเพื่อเป็นคนแรก!</div>`;
+  } else {
+    postsHtml = posts.map(p => {
+      const animal = getAnimal(p.empId);
+      const timeStr = formatDate(p.createdAt);
+      return `
+        <div class="champ-post-card">
+          <div class="champ-card-top">
+            <div class="champ-avatar">${animal}</div>
+            <div class="champ-user-info">
+              <div class="champ-user-name">${esc(p.name)}</div>
+              <div class="champ-user-meta">${timeStr}</div>
+            </div>
+            <div class="champ-floors-badge">🏃 ${p.floors} ชั้น</div>
+          </div>
+          <div class="champ-message">"${esc(p.message)}"</div>
+        </div>`;
+    }).join('');
+  }
+
+  wrap.innerHTML = inputHtml + postsHtml;
+}
+
+function updateChampCount() {
+  const input = document.getElementById('champ-input');
+  const countEl = document.getElementById('champ-count');
+  const btn = document.getElementById('btn-champ-post');
+  if (!input || !countEl) return;
+  const len = input.value.trim().length;
+  countEl.textContent = `${len} / ${CHAMP_MAX_CHARS}`;
+  countEl.className = 'champ-char-count' + (len > 90 ? ' warn' : '');
+  btn.disabled = len === 0;
+}
+
+async function postAnnouncement() {
+  const input = document.getElementById('champ-input');
+  const btn   = document.getElementById('btn-champ-post');
+  const msg   = (input?.value || '').trim();
+  if (!msg || msg.length > CHAMP_MAX_CHARS) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังโพส...';
+
+  try {
+    // คำนวณ todayFloors ปัจจุบัน (ไม่ต้องอ่าน Firestore ใหม่)
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+    const myWalks = (_walksCache || []).filter(w => {
+      if (w.empId !== currentUser.empId || !w.createdAt) return false;
+      const ts = w.createdAt.toDate ? w.createdAt.toDate() : new Date(w.createdAt);
+      return ts >= today && ts <= todayEnd;
+    });
+    const todayFloors = myWalks.reduce((s,w) => s + (w.floors||0), 0);
+    if (todayFloors < CHAMP_MIN_FLOORS) {
+      showToast('❌ ยังไม่มีสิทธิ์โพส เดินให้ครบ 20 ชั้นก่อนนะ');
+      btn.disabled = false; btn.textContent = '📣 โพสเลย!';
+      return;
+    }
+
+    // Double-check ว่ายังไม่ได้โพสวันนี้ (ป้องกัน cache stale)
+    const todayStr = new Date().toDateString();
+    const latestPosts = await loadAnnouncementsCache(true); // force refresh
+    const alreadyPosted = latestPosts.some(p =>
+      p.empId === currentUser.empId && new Date(p.createdAt).toDateString() === todayStr
+    );
+    if (alreadyPosted) {
+      showToast('✅ โพสไปแล้ววันนี้ กลับมาใหม่พรุ่งนี้นะ');
+      btn.disabled = false; btn.textContent = '📣 โพสเลย!';
+      renderChampBoard(todayFloors);
+      return;
+    }
+
+    // อ่าน doc ปัจจุบัน → เพิ่ม → trim → write (1 read + 1 write)
+    const ref  = db.collection('announcements').doc('board');
+    const snap = await ref.get();
+    const prev = snap.exists ? (snap.data().posts || []) : [];
+
+    const newPost = {
+      empId: currentUser.empId,
+      name: currentUser.name,
+      message: msg,
+      floors: todayFloors,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [newPost, ...prev].slice(0, CHAMP_MAX_POSTS);
+    await ref.set({ posts: updated });
+
+    // อัพเดต cache ทันที
+    _annCache = updated;
+    _annCacheAt = Date.now();
+
+    input.value = '';
+    updateChampCount();
+    showToast('📣 โพสสำเร็จแล้ว!');
+    renderChampBoard(todayFloors);
+  } catch(e) {
+    console.error(e);
+    showToast('❌ โพสไม่สำเร็จ ลองใหม่อีกครั้ง');
+    btn.disabled = false; btn.textContent = '📣 โพสเลย!';
+  }
+}
+
+// =====================================================
 // WALKS CACHE HELPER
 // =====================================================
 // ดึง walks ทั้งหมดจาก Firestore ครั้งเดียว แล้วเก็บ cache ไว้
@@ -1075,7 +1324,7 @@ async function renderHome() {
     document.getElementById('stat-walks').textContent = '—';
     document.getElementById('stat-pts').textContent = '—';
     renderHomeLbPreview([]);
-    renderHomeRecent([]);
+    document.getElementById('champ-board-wrap').innerHTML = '<div class="champ-empty">⚠️ Demo Mode</div>';
     return;
   }
 
@@ -1127,15 +1376,8 @@ async function renderHome() {
     const lbData = computeLeaderboardFromWalks(monthAllWalks).slice(0,3);
     renderHomeLbPreview(lbData);
 
-    // Recent walks — sort client-side, no orderBy needed
-    const recentWalks = allWalks
-      .filter(w => w.createdAt)
-      .sort((a,b) => {
-        const ta = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-        const tb = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-        return tb - ta;
-      }).slice(0,5);
-    renderHomeRecent(recentWalks);
+    // Champion Board — ใช้ todayFloors ที่คำนวณไว้แล้ว, +1 read สำหรับ announcements/board
+    renderChampBoard(totalFloors);
 
   } catch(e) {
     console.error('renderHome error:', e);
@@ -1157,24 +1399,6 @@ function renderHomeLbPreview(data) {
     </div>`).join('');
 }
 
-function renderHomeRecent(walks) {
-  const el = document.getElementById('home-recent');
-  if (!walks.length) {
-    el.innerHTML = '<div class="empty-state"><div class="emoji">👟</div><p>ยังไม่มีประวัติ<br>เริ่มเดินเลย!</p></div>';
-    return;
-  }
-  el.innerHTML = walks.map(w => `
-    <div class="walk-item">
-      <div class="walk-dir-badge ${w.direction}">
-        ${w.direction === 'up' ? '⬆️' : '⬇️'}
-      </div>
-      <div class="walk-info">
-        <div class="walk-route">ชั้น ${w.startFloor} → ${w.endFloor}</div>
-        <div class="walk-meta">${w.floors} ชั้น · ${formatDuration(w.duration)} · ${formatDate(w.createdAt)}</div>
-      </div>
-      <div class="walk-pts">+${w.floors} ชั้น</div>
-    </div>`).join('');
-}
 
 // =====================================================
 // WALK FLOW
