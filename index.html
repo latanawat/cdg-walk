@@ -1373,10 +1373,11 @@ async function renderHome() {
 
     // Food hint ตาม calorie threshold
     const foodEl = document.getElementById('stat-cal-food');
-    if (todayCalories >= 400)      foodEl.textContent = '🍽️ กินอะไรก็ได้ ถ้าจะขยันขนาดนี้!';
-    else if (todayCalories >= 300) foodEl.textContent = '🍜 กินเส้นเล็ก+หมูสับ+ลูกชิ้นได้!';
-    else if (todayCalories >= 200) foodEl.textContent = '🥗 กินยำวุ้นเส้นได้!';
-    else if (todayCalories >= 100) foodEl.textContent = '☕ กินกาแฟลาเต้อัลมอนด์แก้วเล็กได้!';
+    if (todayCalories >= 400)      foodEl.textContent = '🔥 เดินอะไรขนาดนี้ !!';
+    else if (todayCalories >= 300) foodEl.textContent = '🍜 เตี๋ยวซักชาม';
+    else if (todayCalories >= 200) foodEl.textContent = '🥗 ยำวุ้นเส้นรอคุณอยู่';
+    else if (todayCalories >= 100) foodEl.textContent = '☕ พอกินลาเต้แก้วนึง';
+    else if (todayCalories > 0)    foodEl.textContent = '😅 ลิฟต์คิดถึงนะ';
     else                           foodEl.textContent = '';
 
     if (totalFloors > 0) {
@@ -1840,17 +1841,19 @@ async function loadInsights() {
   }
 
   try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthName  = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+    const toTs = w => w.createdAt?.toDate ? w.createdAt.toDate() : new Date(w.createdAt||0);
+
     const allWalks = await getWalksCache();
+    // กรองเฉพาะเดือนปัจจุบัน
     const walks = allWalks
-      .filter(w => w.floors > 0 && w.duration > 0)
-      .sort((a,b) => {
-        const ta = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt||0);
-        const tb = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt||0);
-        return tb - ta;
-      });
+      .filter(w => w.floors > 0 && w.duration > 0 && toTs(w) >= monthStart)
+      .sort((a,b) => toTs(b) - toTs(a));
 
     if (walks.length < 3) {
-      el.innerHTML = '<div class="insights-loading">🏃 ต้องการข้อมูลอีกนิด... เดินต่อเลย!</div>';
+      el.innerHTML = `<div class="insights-loading">🏃 ข้อมูลเดือน${monthName}ยังน้อยอยู่...<br>เดินต่อเลย!</div>`;
       return;
     }
 
@@ -1878,20 +1881,42 @@ async function loadInsights() {
     // Peak hour distribution
     const hours = {};
     walks.forEach(w => {
-      if (w.createdAt?.toDate) {
-        const h = w.createdAt.toDate().getHours();
-        hours[h] = (hours[h]||0) + 1;
-      }
+      const h = toTs(w).getHours();
+      hours[h] = (hours[h]||0) + 1;
     });
     const topHour = Object.entries(hours).sort((a,b)=>b[1]-a[1])[0];
 
+    // 🌅 First & last walker of the day
+    const byDate = {};
+    walks.forEach(w => {
+      const ts = toTs(w);
+      const key = ts.toDateString();
+      if (!byDate[key]) byDate[key] = [];
+      byDate[key].push({ ...w, _ts: ts });
+    });
+    const firstCount = {}, lastCount = {};
+    Object.values(byDate).forEach(dayWalks => {
+      dayWalks.sort((a,b) => a._ts - b._ts);
+      const first = dayWalks[0];
+      const last  = dayWalks[dayWalks.length - 1];
+      if (!firstCount[first.empId]) firstCount[first.empId] = { name: first.userName, count: 0 };
+      firstCount[first.empId].count++;
+      if (!lastCount[last.empId])  lastCount[last.empId]  = { name: last.userName,  count: 0 };
+      lastCount[last.empId].count++;
+    });
+    const topFirst = Object.values(firstCount).sort((a,b) => b.count - a.count)[0];
+    const topLast  = Object.values(lastCount).sort((a,b)  => b.count - a.count)[0];
+    const totalDays = Object.keys(byDate).length;
+
     const cards = [
+      { icon:'🌅', title:'นกตื่นเช้า', name: topFirst?.name || '—', value: topFirst ? `เดินคนแรก ${topFirst.count}/${totalDays} วัน` : '' },
+      { icon:'🌙', title:'นักสู้ยามเย็น', name: topLast?.name || '—', value: topLast ? `เดินคนสุดท้าย ${topLast.count}/${totalDays} วัน` : '' },
       { icon:'🐢', title:'นักเดินช้าที่สุด', name: slowest.name, value:`เฉลี่ย ${Math.round(avgSecPerFloor(slowest))} วิ/ชั้น` },
-      { icon:'⚡', title:'นักเดินเร็วที่สุด', name: fastest.name, value:`เฉลี่ย ${Math.round(avgSecPerFloor(fastest))} วิ/ชั้น — เร็วมาก!` },
-      { icon:'🏆', title:'ยอดนักสะสมชั้น', name: mostFloors.name, value:`${mostFloors.walks.reduce((s,w)=>s+w.floors,0)} ชั้นรวม` },
+      { icon:'⚡', title:'นักเดินเร็วที่สุด', name: fastest.name, value:`เฉลี่ย ${Math.round(avgSecPerFloor(fastest))} วิ/ชั้น` },
+      { icon:'🏆', title:'ยอดนักสะสมชั้น', name: mostFloors.name, value:`${mostFloors.walks.reduce((s,w)=>s+w.floors,0)} ชั้นเดือนนี้` },
       { icon:'🎯', title:'เส้นทางยอดนิยม', name: topRoute ? `ชั้น ${topRoute[0]}` : '—', value: topRoute ? `${topRoute[1]} ครั้ง` : '' },
-      { icon:'🕐', title:'ชั่วโมงขยันที่สุด', name: topHour ? `${topHour[0]}:00 น.` : '—', value: topHour ? `${topHour[1]} ครั้งในชั่วโมงนี้` : '' },
-      { icon:'💪', title:'นักเดินบ่อยที่สุด', name: mostSessions.name, value:`${mostSessions.walks.length} ครั้งทั้งหมด` },
+      { icon:'🕐', title:'ชั่วโมงขยันที่สุด', name: topHour ? `${topHour[0]}:00 น.` : '—', value: topHour ? `${topHour[1]} ครั้ง` : '' },
+      { icon:'💪', title:'นักเดินบ่อยที่สุด', name: mostSessions.name, value:`${mostSessions.walks.length} ครั้งเดือนนี้` },
     ];
 
     // ===== ANIMAL TEAM — group users by avatar, sum floors =====
@@ -1948,7 +1973,7 @@ async function loadInsights() {
         </div>
       </div>`).join('') + `
       <div style="padding:8px;text-align:center;font-size:12px;color:var(--gray3);">
-        วิเคราะห์จาก ${walks.length} การเดินทั้งหมด
+        📅 ข้อมูลเดือน${monthName} · ${walks.length} การเดิน
       </div>
     </div>` + animalTeamHtml;
 
