@@ -1704,8 +1704,11 @@ const ANIMAL_NAMES = {
 };
 function getAnimal(empId) {
   if (!empId) return '🐾';
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const input = empId + monthKey; // สัตว์สลับใหม่ทุกเดือน แต่ยังเป็น pure function (0 reads)
   let hash = 0;
-  for (let i = 0; i < empId.length; i++) hash = empId.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < input.length; i++) hash = input.charCodeAt(i) + ((hash << 5) - hash);
   return ANIMAL_AVATARS[Math.abs(hash) % ANIMAL_AVATARS.length];
 }
 
